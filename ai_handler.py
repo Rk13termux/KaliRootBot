@@ -1,29 +1,105 @@
 import os
+import re
+import html
 from typing import List
 from groq import Groq
+from groq import BadRequestError, NotFoundError
 import logging
 from supabase import create_client, Client
-from config import SUPABASE_URL, SUPABASE_ANON_KEY, GROQ_API_KEY, GROQ_MODEL
+# import config variables
+from config import SUPABASE_URL, SUPABASE_ANON_KEY, GROQ_API_KEY, GROQ_MODEL, GROQ_EMBEDDING_MODEL, EMBEDDING_BACKEND, ENABLE_GROQ_CHAT, FALLBACK_AI_TEXT
+# (BadRequestError imported above)
 
 logger = logging.getLogger(__name__)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-groq_client = Groq(api_key=GROQ_API_KEY)
+# Initialise groq client if API key present
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+
+def select_first_available_embedding_model() -> str | None:
+    """List available models via Groq and select a model that seems to support embeddings.
+
+    Heuristic: prefer models with 'embed' in the model id; falls back to None.
+    """
+    try:
+        if not groq_client:
+            return None
+        model_list = groq_client.models.list()  # type: ignore[attr-defined]
+        if hasattr(model_list, 'data') and model_list.data:
+            for m in model_list.data:
+                mid = getattr(m, 'id', None) or m.get('id') if isinstance(m, dict) else None
+                if not mid:
+                    continue
+                if 'embed' in mid.lower():
+                    logger.info('Auto-selected embedding model %s from account models', mid)
+                    return mid
+            # No 'embed' in names, fall back to first model if any
+            if len(model_list.data) > 0:
+                first = model_list.data[0]
+                mid = getattr(first, 'id', None) or first.get('id') if isinstance(first, dict) else None
+                logger.info('No explicit embedding model found; selecting first model %s', mid)
+                return mid
+    except Exception:
+        logger.debug('Could not list Groq models; perhaps the API key is invalid or network failure')
+    return None
 
 logger.info('Using Groq MODEL for chat & embed: %s', GROQ_MODEL)
 
 async def get_ai_response(query: str) -> str:
+    logger.debug('get_ai_response called; EMBEDDING_BACKEND=%s ENABLE_GROQ_CHAT=%s', EMBEDDING_BACKEND, ENABLE_GROQ_CHAT)
     # 1. Generar embedding usando la API de Groq (este proyecto usa Groq para embeddings)
     query_vec: List[float] = []
     # Use Groq embeddings endpoint to get vector without local torch
     # The groq client API for embeddings may differ depending on the package version; adjust if needed.
     emb_resp = None
-    used_model = GROQ_MODEL or "embed-english-3.0"
-    try:
-        emb_resp = groq_client.embeddings.create(model=used_model, input=query)
-    except Exception as e:
-        logger.exception("Embedding failed with model %s: %s", used_model, e)
-        emb_resp = None
+    # Prefer a dedicated embedding model if provided; otherwise prefer GROQ_MODEL if it supports embedding
+    # or select one from the account via models.list(). If no model is available, we'll skip embeddings.
+    used_model = None
+    if GROQ_EMBEDDING_MODEL:
+        used_model = GROQ_EMBEDDING_MODEL
+    elif GROQ_MODEL and 'embed' in (GROQ_MODEL or '').lower():
+        used_model = GROQ_MODEL
+    else:
+        used_model = select_first_available_embedding_model()
+    if used_model and EMBEDDING_BACKEND == 'groq':
+        try:
+            if groq_client:
+                emb_resp = groq_client.embeddings.create(model=used_model, input=query)
+            else:
+                logger.debug('No groq client configured; skipping embeddings')
+        except BadRequestError as e:
+            # Model may not support embeddings; try to fall back to a dedicated embeddings model if available
+            logger.warning("Embedding BadRequestError with model %s: %s", used_model, e)
+            if used_model != 'embed-english-3.0':
+                fallback_model = 'embed-english-3.0'
+                try:
+                    logger.info("Attempting fallback embedding model: %s", fallback_model)
+                    emb_resp = groq_client.embeddings.create(model=fallback_model, input=query)
+                except Exception:
+                    logger.exception("Fallback embedding model also failed: %s", fallback_model)
+                    emb_resp = None
+            else:
+                emb_resp = None
+        except NotFoundError as e:
+            # Model doesn't exist or not accessible by current API key
+            logger.warning("Embedding NotFoundError with model %s: %s", used_model, e)
+            # Try to pick a model by listing available models
+            fallback_model = select_first_available_embedding_model()
+            if fallback_model and fallback_model != used_model:
+                try:
+                    logger.info("Attempting fallback embedding model: %s", fallback_model)
+                    emb_resp = groq_client.embeddings.create(model=fallback_model, input=query)
+                except Exception:
+                    logger.exception("Fallback embedding model also failed: %s", fallback_model)
+                    emb_resp = None
+            else:
+                emb_resp = None
+        except Exception as e:
+            logger.exception("Embedding failed with model %s: %s", used_model, e)
+            emb_resp = None
+    else:
+        logger.debug('No embedding model selected; skipping embedding in this request')
 
     # Normalize embedding response (support various client shapes)
     try:
@@ -38,6 +114,10 @@ async def get_ai_response(query: str) -> str:
     except Exception:
         logger.exception('Failed to extract embedding vector from result: %s', getattr(emb_resp, 'data', emb_resp))
         query_vec = []
+
+
+# NOTE: select_first_available_embedding_model() has been moved above
+    
     # 2. Buscar contexto relevante en Supabase
     # 2. Buscar contexto relevante en Supabase (si está disponible). Si falla, continuamos sin contexto.
     context_fragments = []
@@ -58,17 +138,46 @@ async def get_ai_response(query: str) -> str:
     context = "\n".join(context_fragments)
     # 3. Construir prompt
     prompt = f"Eres un experto en Kali Linux. Responde únicamente usando el siguiente contexto:\n{context}\n\nPregunta: {query}"
-    # 4. Llamar a Groq para completado
+    # 4. Llamar a Groq para completado (only if enabled)
     # Chat completion: use only Groq chat models
     # This bot uses only the Groq model specified in `GROQ_MODEL` for both embeddings and chat.
     chat_model = GROQ_MODEL
     # Attempt a single Groq chat model specified by config
+    # If chat completions disabled, skip calling Groq and return fallback
+    if not ENABLE_GROQ_CHAT or not groq_client:
+        logger.info('Groq chat disabled or client missing; returning fallback')
+        logger.debug('Returning FALLBACK_AI_TEXT: %s', FALLBACK_AI_TEXT)
+        return FALLBACK_AI_TEXT
     try:
         response = groq_client.chat.completions.create(
             model=chat_model,
             messages=[{"role": "user", "content": prompt}]
         )
-        return response.choices[0].message.content if response.choices else "No se pudo obtener respuesta de la IA."
+        raw_text = None
+        try:
+            raw_text = response.choices[0].message.content if response.choices else None
+        except Exception:
+            logger.debug('Groq response not in expected format; trying dict access')
+            if isinstance(response, dict):
+                raw_text = response.get('choices', [{}])[0].get('message', {}).get('content')
+        if not raw_text:
+            logger.warning('Groq chat returned empty content; using fallback')
+            return FALLBACK_AI_TEXT
+        # Defensive sanitation: sometimes models return the string 'None' or 'null' as text,
+        # treat that as an empty response and use the fallback.
+        if isinstance(raw_text, str) and raw_text.strip().lower() in ('none', 'null', 'n/a'):
+            logger.warning("Groq chat returned a placeholder string like 'None' or 'null'; using fallback")
+            return FALLBACK_AI_TEXT
+        # Ensure the response is safe and formatted for Telegram HTML parse mode
+        try:
+            formatted = format_ai_response_html(raw_text)
+            if not formatted or formatted.strip().lower() in ('none', 'null', 'n/a'):
+                logger.warning('Formatted AI response is empty or placeholder; using fallback instead')
+                return FALLBACK_AI_TEXT
+            return formatted
+        except Exception:
+            logger.exception('Failed to format AI response; returning fallback')
+            return FALLBACK_AI_TEXT
     except Exception as e:
         logger.exception('Chat completion error with Groq model %s: %s', chat_model, e)
         # Log model availability if possible for easier debugging
@@ -85,5 +194,85 @@ async def get_ai_response(query: str) -> str:
             logger.debug('Could not list Groq models via API for debugging')
     if context:
         # Return the most relevant context fragment or a short summary
-        return (f"No puedo generar la respuesta ahora mismo, pero aquí tienes información relacionada:\n{context.splitlines()[0][:800]}")
-    return "Lo siento, no puedo procesar tu pregunta en este momento. Inténtalo de nuevo más tarde."
+        # Guard against placeholder or empty text
+        ctx_preview = context.splitlines()[0][:800] if context else ''
+        formatted = format_ai_response_html((f"No puedo generar la respuesta ahora mismo, pero aquí tienes información relacionada:\n{ctx_preview}"))
+        if not formatted or formatted.strip().lower() in ('none', 'null', 'n/a'):
+            return FALLBACK_AI_TEXT
+        return formatted
+    return FALLBACK_AI_TEXT
+
+
+def format_ai_response_html(text: str) -> str:
+    """Format text to be safe for Telegram HTML parse mode and transform code/commands to use <code> / <pre><code> tags.
+
+    - Preserve code fences (```...```) as <pre><code>...</code></pre>
+    - Convert inline backticks to <code>...</code>
+    - Wrap words that look like commands (/command) into <code>/command</code>
+    - Escape other HTML special chars
+    """
+    if not isinstance(text, str):
+        text = str(text)
+    # Normalize newlines
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+    # Temporarily extract fenced code blocks to placeholders
+    codeblocks = {}
+    def replace_fenced(match):
+        idx = len(codeblocks)
+        content = match.group(1)
+        codeblocks[f"@@CODEBLOCK{idx}@@"] = content
+        return f"@@CODEBLOCK{idx}@@"
+    text = re.sub(r"```(?:[^\n]*\n)?(.*?)```", replace_fenced, text, flags=re.DOTALL)
+
+    # Extract inline code: `code`
+    inline_codes = {}
+    def replace_inline(match):
+        idx = len(inline_codes)
+        content = match.group(1)
+        inline_codes[f"@@INLINE{idx}@@"] = content
+        return f"@@INLINE{idx}@@"
+    text = re.sub(r"`([^`]+?)`", replace_inline, text)
+
+    # Now, remove or convert markdown styles; convert **bold** to <b> and remove other markdown emphasis
+    # Convert **bold** to a placeholder so we can escape safely and then inject HTML
+    bolds = {}
+    def replace_bold(m):
+        idx = len(bolds)
+        inner = m.group(1)
+        bolds[f"@@BOLD{idx}@@"] = inner
+        return f"@@BOLD{idx}@@"
+    text = re.sub(r"\*\*(.+?)\*\*", replace_bold, text)
+    # Remove other markdown emphasis such as *italic* and _italic_ by replacing with inner text
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text)
+    text = re.sub(r"(?<!_)_(.+?)_(?!_)", r"\1", text)
+
+    # Escape HTML special chars now (will re-insert code placeholders and wrap them with tags)
+    text = html.escape(text)
+
+    # Wrap command-like tokens (words beginning with /) in <code>...</code>
+    # Avoid altering placeholders
+    def replace_cmd(m):
+        token = m.group(0)
+        return f"<code>{html.escape(token)}</code>"
+    # Only match commands that are standalone (start of string or preceded by whitespace), to avoid matching parts
+    # of escaped HTML entities or tags like &lt;/script&gt;
+    text = re.sub(r"(?<!\S)/(?:[a-zA-Z0-9_@]+)", replace_cmd, text)
+
+    # Restore inline codes with <code>
+    for k, v in inline_codes.items():
+        esc = html.escape(v)
+        text = text.replace(k, f"<code>{esc}</code>")
+
+    # Restore fenced codeblocks with <pre><code> esc ...</code></pre>
+    for k, v in codeblocks.items():
+        esc = html.escape(v)
+        # For readability, preserve leading/trailing newlines properly
+        text = text.replace(k, f"<pre><code>{esc}</code></pre>")
+
+    # Restore bold placeholders as <b>...</b>
+    for k, v in bolds.items():
+        esc = html.escape(v)
+        text = text.replace(k, f"<b>{esc}</b>")
+
+    return text
