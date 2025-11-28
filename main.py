@@ -12,7 +12,7 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters
 from bot_logic import handle_message
 from gumroad_handler import process_gumroad_webhook
-from config import TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL
+from config import TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET
 
 telegram_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler('start', handle_message))
@@ -36,6 +36,9 @@ async def lifespan(app: FastAPI):
         logger.info("Telegram application started via lifespan.")
         # If we have a TELEGRAM_WEBHOOK_URL set via env, attempt to set webhook for Telegram
         if TELEGRAM_WEBHOOK_URL:
+            # Quick warning if the configured webhook URL lacks a path
+            if TELEGRAM_WEBHOOK_URL.rstrip('/').endswith('onrender.com'):
+                logger.warning('TELEGRAM_WEBHOOK_URL appears to be the root domain. Consider using the full webhook path: https://<your-domain>/webhook/telegram')
             try:
                 logger.info('Setting Telegram webhook to %s', TELEGRAM_WEBHOOK_URL)
                 # If a secret token is provided, register it with the webhook so Telegram
