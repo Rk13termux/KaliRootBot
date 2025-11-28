@@ -38,7 +38,12 @@ async def lifespan(app: FastAPI):
         if TELEGRAM_WEBHOOK_URL:
             try:
                 logger.info('Setting Telegram webhook to %s', TELEGRAM_WEBHOOK_URL)
-                await telegram_app.bot.set_webhook(TELEGRAM_WEBHOOK_URL)
+                # If a secret token is provided, register it with the webhook so Telegram
+                # includes it in the `X-Telegram-Bot-Api-Secret-Token` header.
+                if TELEGRAM_WEBHOOK_SECRET:
+                    await telegram_app.bot.set_webhook(TELEGRAM_WEBHOOK_URL, secret_token=TELEGRAM_WEBHOOK_SECRET)
+                else:
+                    await telegram_app.bot.set_webhook(TELEGRAM_WEBHOOK_URL)
                 logger.info('Webhook set successfully')
             except Exception as e:
                 logger.exception('Failed to set webhook: %s', e)

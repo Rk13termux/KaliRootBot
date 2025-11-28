@@ -28,6 +28,8 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 5) Add the required environment variables in the `Environment` tab (TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY, GROQ_API_KEY, GUMROAD_WEBHOOK_SECRET, GROQ_MODEL, and optionally TELEGRAM_WEBHOOK_URL). The `TELEGRAM_WEBHOOK_URL` should point to `https://<your-service>.onrender.com/webhook/telegram`.
+
+If you need to change or reconfigure env variables on Render, do NOT delete the repository: you can update the variables in the Render -> Service -> Environment tab and click Save & Deploy to apply changes. Only delete the service when you want to re-create a new one from scratch.
 6) Optionally configure a `Health Check` of `/status` and `PORT` as Render default.
 7) Deploy. When Render finishes building and your app starts, verify the logs and visit the `/status` endpoint to check the bot is ready. If `TELEGRAM_WEBHOOK_URL` was configured, check `getWebhookInfo` to confirm Telegram is posting to the right endpoint.
 

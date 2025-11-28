@@ -48,12 +48,37 @@ def run():
                     logger.info('Deleted webhook successfully (drop_pending_updates=True)')
                 else:
                     logger.warning('deleteWebhook returned non-ok response: %s', data2)
+                # Give Telegram a short moment to process the deletion to avoid a race with polling
+                import time
+                time.sleep(0.5)
         except Exception as e:
             logger.exception('Failed to inspect/delete webhook automatically: %s', e)
     app.add_handler(CommandHandler('start', handle_message))
     app.add_handler(CommandHandler('comprar', handle_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling()
+    # Perform a synchronous connectivity check to Telegram before starting polling
+    try:
+        import json
+        from urllib.request import Request, urlopen
+        get_me_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe"
+        req = Request(get_me_url)
+        with urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+        if not data.get('ok'):
+            logger.error('Telegram token may be invalid: %s', data)
+            sys.exit(1)
+        logger.info('Telegram connectivity check OK')
+    except Exception as e:
+        logger.exception('Telegram reachability check failed: %s', e)
+        logger.error('If you are behind a firewall or experiencing network issues, fix connectivity or adjust timeouts. Exiting.')
+        sys.exit(1)
+
+    # Finally run polling (this method manages its own event loop and initialization)
+    try:
+        app.run_polling()
+    except Exception as e:
+        logger.exception('run_polling() failed: %s', e)
+        raise
 
 if __name__ == '__main__':
     run()
