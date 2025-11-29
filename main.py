@@ -10,14 +10,22 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters
 from bot_logic import handle_message
 from gumroad_handler import process_gumroad_webhook
-from config import TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET, DELETE_WEBHOOK_ON_POLLING
+from config import TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET, DELETE_WEBHOOK_ON_POLLING, SKIP_ENV_VALIDATION, FALLBACK_AI_TEXT
+from config import validate_config
 
-logging.basicConfig(level=logging.DEBUG)
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO))
 logger = logging.getLogger(__name__)
+ENV = os.getenv('ENV', 'production').lower()
+IN_PROD = ENV == 'production'
 
 # Optionally allow webhook to persist across shutdowns to avoid losing webhook during platform restarts
 PERSIST_WEBHOOK_ON_SHUTDOWN = os.getenv('PERSIST_WEBHOOK_ON_SHUTDOWN', '0').lower() in ['1', 'true', 'yes']
+ENABLE_DEBUG_ENDPOINTS = os.getenv('ENABLE_DEBUG_ENDPOINTS', '0').lower() in ['1', 'true', 'yes']
 
+validate_config()
+if TELEGRAM_BOT_TOKEN is None:
+    raise EnvironmentError('TELEGRAM_BOT_TOKEN must be set in production')
 telegram_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler('start', handle_message))
 telegram_app.add_handler(CommandHandler('saldo', handle_message))
@@ -50,6 +58,12 @@ async def lifespan(app: FastAPI):
                 logger.info('Webhook set successfully')
             except Exception as e:
                 logger.exception('Failed to set webhook: %s', e)
+        else:
+            # In production we expect a webhook URL; if not set, log strongly but don't crash if validation was skipped.
+            if not SKIP_ENV_VALIDATION:
+                logger.error('TELEGRAM_WEBHOOK_URL is not set — running in webhook mode without a webhook may cause missed updates')
+        if IN_PROD and TELEGRAM_WEBHOOK_URL and not TELEGRAM_WEBHOOK_URL.startswith('https://'):
+            logger.error('TELEGRAM_WEBHOOK_URL does not use HTTPS; this is insecure for production')
     except Exception:
         # Keep server running even if Telegram initialization fails
         logger.exception('Error initializing Telegram app; continuing to serve HTTP endpoints')
@@ -69,7 +83,8 @@ async def lifespan(app: FastAPI):
                     logger.info('Heartbeat: service alive (pid=%s)', os.getpid())
                 await asyncio.sleep(60)
         hb = asyncio.create_task(_heartbeat())
-        app.extra['heartbeat_task'] = hb
+        # Use app.state which is recommended (app.extra is not guaranteed)
+        app.state.heartbeat_task = hb
     except Exception:
         logger.debug('Could not create heartbeat task')
 
@@ -92,7 +107,7 @@ async def lifespan(app: FastAPI):
             logger.exception('Error while stopping Telegram application')
         # Cancel heartbeat task if present
         try:
-            hb = app.extra.get('heartbeat_task') if hasattr(app, 'extra') else None
+            hb = getattr(app.state, 'heartbeat_task', None)
             if hb:
                 try:
                     hb.cancel()
@@ -113,6 +128,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+def debug_guard():
+    if not ENABLE_DEBUG_ENDPOINTS:
+        raise HTTPException(status_code=403, detail='Debug endpoints are disabled in this environment')
 
 
 @app.post('/webhook/telegram')
@@ -154,6 +174,7 @@ async def root_head() -> Response:
 
 @app.post('/debug/register')
 async def debug_register(request: Request):
+    debug_guard()
     data = await request.json()
     user_id = data.get('user_id')
     first_name = data.get('first_name')
@@ -172,6 +193,7 @@ async def debug_register(request: Request):
 
 @app.post('/debug/register-raw')
 async def debug_register_raw(request: Request):
+    debug_guard()
     data = await request.json()
     user_id = data.get('user_id')
     first_name = data.get('first_name')
@@ -198,6 +220,7 @@ async def debug_register_raw(request: Request):
 
 @app.post('/debug/register-rpc')
 async def debug_register_rpc(request: Request):
+    debug_guard()
     data = await request.json()
     user_id = data.get('user_id')
     first_name = data.get('first_name')
@@ -219,6 +242,7 @@ async def debug_register_rpc(request: Request):
 
 @app.get('/debug/env')
 async def debug_env():
+    debug_guard()
     import os
     checks = {
         'TELEGRAM_BOT_TOKEN_present': bool(os.getenv('TELEGRAM_BOT_TOKEN')),
@@ -233,6 +257,7 @@ async def debug_env():
 
 @app.post('/debug/deduct')
 async def debug_deduct(request: Request):
+    debug_guard()
     data = await request.json()
     user_id = data.get('user_id')
     if not user_id:
@@ -251,6 +276,7 @@ async def debug_deduct(request: Request):
 
 @app.get('/debug/db-check')
 async def debug_db_check():
+    debug_guard()
     try:
         from database_manager import test_connection
         ok = test_connection()
@@ -309,271 +335,6 @@ if __name__ == '__main__':
         else:
             print(f'Using fallback port {found} instead of {port}.')
             port = found
-    uvicorn.run('main:app', host=host, port=port)
-from fastapi import FastAPI, Request, HTTPException, Response
-import socket
-from contextlib import asynccontextmanager
-import uvicorn
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
-import logging
-import os
-import json
-from telegram import Update
-from telegram.ext import Application, MessageHandler, CommandHandler, filters
-from bot_logic import handle_message
-
-
-@app.post('/debug/register-rpc')
-async def debug_register_rpc(request: Request):
-    data = await request.json()
-    user_id = data.get('user_id')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    username = data.get('username')
-    initial_balance = data.get('initial_balance', 0)
-    if not user_id:
-        raise HTTPException(status_code=400, detail='user_id is required')
-    try:
-        from database_manager import supabase
-        params = {'uid': int(user_id), 'first_name': first_name, 'last_name': last_name, 'username': username, 'initial_balance': int(initial_balance)}
-        res = supabase.rpc('add_or_update_user', params).execute()
-        result = {
-            'data': getattr(res, 'data', None),
-            'error': getattr(res, 'error', None),
-            'status_code': getattr(res, 'status_code', None)
-        }
-        return {'status': 'ok', 'result': result}
-    except Exception as e:
-        logger.exception('debug_register_rpc error: %s', e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get('/debug/env')
-async def debug_env():
-    """Return presence (boolean) of critical environment variables; do not expose values."""
-    import os
-    checks = {
-        'TELEGRAM_BOT_TOKEN_present': bool(os.getenv('TELEGRAM_BOT_TOKEN')),
-        'SUPABASE_URL_present': bool(os.getenv('SUPABASE_URL')),
-        'SUPABASE_ANON_KEY_present': bool(os.getenv('SUPABASE_ANON_KEY')),
-        'SUPABASE_SERVICE_KEY_present': bool(os.getenv('SUPABASE_SERVICE_KEY')),
-        'GROQ_API_KEY_present': bool(os.getenv('GROQ_API_KEY')),
-        'GUMROAD_WEBHOOK_SECRET_present': bool(os.getenv('GUMROAD_WEBHOOK_SECRET')),
-    }
-    return {'status': 'ok', 'env': checks}
-
-
-@app.post('/debug/deduct')
-async def debug_deduct(request: Request):
-    """Attempt to call deduct_credit RPC for a user and return raw RPC response for debugging."""
-    data = await request.json()
-    user_id = data.get('user_id')
-    if not user_id:
-        raise HTTPException(status_code=400, detail='user_id is required')
-    try:
-        from database_manager import supabase, get_user_credits
-        before = await get_user_credits(int(user_id))
-        res = supabase.rpc('deduct_credit', {'uid': int(user_id)}).execute()
-        after = await get_user_credits(int(user_id))
-        result = {
-            'before': before,
-            'raw_rpc': {
-                'data': getattr(res, 'data', None),
-                'error': getattr(res, 'error', None),
-                'status_code': getattr(res, 'status_code', None),
-            },
-            'after': after
-        }
-        return {'status': 'ok', 'result': result}
-    except Exception as e:
-        logger.exception('debug_deduct error: %s', e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/webhook/gumroad")
-async def gumroad_webhook(request: Request):
-    signature = request.headers.get("X-Gumroad-Signature", "")
-    body = await request.body()
-    result = await process_gumroad_webhook(body, signature)
-    if result["status"] != 200:
-        raise HTTPException(status_code=result["status"], detail=result["message"])
-    return result
-
-
-@app.get("/")
-async def root():
-    # basic service health endpoint
-    return {"status": "ok", "service": "kali-tutor-bot"}
-
-
-@app.head("/")
-async def root_head() -> Response:
-    """Explicit HEAD handler to satisfy some health checkers (e.g., Render) that send HEAD to '/'.
-
-    Returning 200 avoids 405 Method Not Allowed and unexpected re-deploys from Render's health checks.
-    """
-    return Response(status_code=200)
-
-
-@app.post('/debug/register')
-async def debug_register(request: Request):
-    data = await request.json()
-    user_id = data.get('user_id')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    username = data.get('username')
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id is required")
-    try:
-        from database_manager import register_user_if_not_exists
-        created = await register_user_if_not_exists(int(user_id), first_name=first_name, last_name=last_name, username=username)
-        return {"status": "ok", "created": created}
-    except Exception as e:
-        logger.exception("debug_register error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get('/status')
-async def status():
-    return {
-        'telegram_started': TELEGRAM_STARTED,
-        'bot_service': 'kali-tutor-bot'
-    }
-
-
-@app.get('/healthz')
-async def healthz():
-    """Return a small diagnostic check for external dependencies (Supabase)."""
-    from database_manager import test_connection
-    res = {
-        'telegram_started': TELEGRAM_STARTED,
-        'db_ok': False,
-    }
-    try:
-        ok = test_connection()
-        res['db_ok'] = bool(ok)
-    except Exception as e:
-        logger.exception('Health check DB error: %s', e)
-    status_code = 200 if res['db_ok'] else 503
-    return Response(content=json.dumps(res), status_code=status_code, media_type='application/json')
-
-
-@app.post('/debug/register-rpc')
-async def debug_register_rpc(request: Request):
-    data = await request.json()
-    user_id = data.get('user_id')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    username = data.get('username')
-    initial_balance = data.get('initial_balance', 0)
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id is required")
-    try:
-        from database_manager import supabase
-        params = {"uid": int(user_id), "first_name": first_name, "last_name": last_name, "username": username, "initial_balance": int(initial_balance)}
-        res = supabase.rpc('add_or_update_user', params).execute()
-        result = {
-            'data': getattr(res, 'data', None),
-            'error': getattr(res, 'error', None),
-            'status_code': getattr(res, 'status_code', None)
-        }
-        return {'status': 'ok', 'result': result}
-    except Exception as e:
-        logger.exception('debug_register_rpc error: %s', e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get('/debug/env')
-async def debug_env():
-    """Return presence (boolean) of critical environment variables; do not expose values."""
-    import os
-    checks = {
-        'TELEGRAM_BOT_TOKEN_present': bool(os.getenv('TELEGRAM_BOT_TOKEN')),
-        'SUPABASE_URL_present': bool(os.getenv('SUPABASE_URL')),
-        'SUPABASE_ANON_KEY_present': bool(os.getenv('SUPABASE_ANON_KEY')),
-        'SUPABASE_SERVICE_KEY_present': bool(os.getenv('SUPABASE_SERVICE_KEY')),
-        'GROQ_API_KEY_present': bool(os.getenv('GROQ_API_KEY')),
-        'GUMROAD_WEBHOOK_SECRET_present': bool(os.getenv('GUMROAD_WEBHOOK_SECRET')),
-    }
-    return {'status': 'ok', 'env': checks}
-
-
-@app.post('/debug/register-raw')
-async def debug_register_raw(request: Request):
-    """Directly call supabase upsert and return raw response for debugging."""
-    data = await request.json()
-    user_id = data.get('user_id')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    username = data.get('username')
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id is required")
-    try:
-        from database_manager import supabase
-        payload = {"user_id": int(user_id)}
-        if 'first_name' in data and data['first_name'] is not None:
-            payload['first_name'] = data['first_name']
-        if 'last_name' in data and data['last_name'] is not None:
-            payload['last_name'] = data['last_name']
-        if 'username' in data and data['username'] is not None:
-            payload['username'] = data['username']
-        res = supabase.table('usuarios').upsert(payload).execute()
-        # Build a safe response to show what happened
-        result = {
-            'data': getattr(res, 'data', None),
-            'error': getattr(res, 'error', None),
-            'status_code': getattr(res, 'status_code', None)
-        }
-        return {'status': 'ok', 'result': result}
-    except Exception as e:
-        logger.exception('debug_register_raw error: %s', e)
-        raise HTTPException(status_code=500, detail=str(e))
-                # duplicated health check block removed
-
-
-@app.get('/debug/db-check')
-async def debug_db_check():
-    try:
-        from database_manager import test_connection
-        ok = test_connection()
-        return {"status": "ok", "db_ok": ok}
-    except Exception as e:
-        logger.exception("db-check error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# '/status' already defined above; do not redefine.
-
-def is_port_free(host: str, port: int) -> bool:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        s.bind((host, port))
-        s.close()
-        return True
-    except Exception:
-        try:
-            s.close()
-        except Exception:
-            pass
-        return False
-
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    host = "0.0.0.0"
-    if not is_port_free(host, port):
-        print(f"Port {port} appears to be in use. Trying higher ports up to {port+9}...")
-        found = None
-        for p in range(port + 1, port + 10):
-            if is_port_free(host, p):
-                found = p
-                break
-        if found is None:
-            print(f"No free ports found in range {port+1} to {port+9}. Aborting.")
-            exit(1)
-        else:
-            print(f"Using fallback port {found} instead of {port}.")
-            port = found
-    uvicorn.run("main:app", host=host, port=port)
+    workers = int(os.getenv('UVICORN_WORKERS', '1'))
+    logger.info('Starting uvicorn with host=%s port=%s workers=%s log_level=%s', host, port, workers, LOG_LEVEL)
+    uvicorn.run('main:app', host=host, port=port, log_level=LOG_LEVEL.lower(), workers=workers)
