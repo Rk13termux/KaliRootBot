@@ -68,6 +68,13 @@ async def lifespan(app: FastAPI):
             await telegram_app.shutdown()
             TELEGRAM_STARTED = False
             logger.info("Telegram application stopped via lifespan.")
+        # Cancel heartbeat task if present
+        hb = app.extra.get('heartbeat_task') if hasattr(app, 'extra') else None
+        if hb:
+            try:
+                hb.cancel()
+            except Exception:
+                pass
         except Exception:
             pass
     # Signal handler: log termination reason if process receives SIGTERM/SIGINT
@@ -79,6 +86,27 @@ async def lifespan(app: FastAPI):
         signal.signal(signal.SIGINT, _log_signal)
     except Exception:
         logger.debug('Could not set signal handlers for logging')
+
+    # Start a background heartbeat task to log the app is alive every minute (helps detect if platform recycles or kills)
+    try:
+        import asyncio
+        async def _heartbeat():
+                import resource
+                while True:
+                    try:
+                        usage = resource.getrusage(resource.RUSAGE_SELF)
+                        rss = usage.ru_maxrss
+                        utime = usage.ru_utime
+                        stime = usage.ru_stime
+                        logger.info('Heartbeat: service alive (pid=%s) rss=%sKB utime=%s stime=%s', os.getpid(), rss, utime, stime)
+                    except Exception:
+                        logger.info('Heartbeat: service alive (pid=%s)', os.getpid())
+                    await asyncio.sleep(60)
+        hb = asyncio.create_task(_heartbeat())
+        # Register cleanup
+        app.extra['heartbeat_task'] = hb
+    except Exception:
+        logger.debug('Could not create heartbeat task')
 
 app = FastAPI(lifespan=lifespan)
 
