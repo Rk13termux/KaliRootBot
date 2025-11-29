@@ -1,3 +1,6 @@
+ - 6) Optionally configure a `Health Check` of `/status` and `PORT` as Render default. Important: If your load balancer uses `HEAD /` as a health check but your app returns 405 for HEAD on the root path, Render may mark the service unhealthy and attempt to restart it. We recommend using `/status` for health checks or adding an explicit `HEAD /` route as shown in `main.py`.
+
+ 
 ### 👇 7) Deploying to Render (webhook mode for production)
  - `TELEGRAM_WEBHOOK_URL` — The public URL that Telegram will POST updates to. For Render, this is typically `https://<your-service>.onrender.com/webhook/telegram`.
  - Set the start command to run the FastAPI app (the main entrypoint uses uvicorn by default).

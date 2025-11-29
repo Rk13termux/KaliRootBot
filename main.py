@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 import socket
 from contextlib import asynccontextmanager
 import uvicorn
@@ -106,6 +106,15 @@ async def gumroad_webhook(request: Request):
 async def root():
     # basic service health endpoint
     return {"status": "ok", "service": "kali-tutor-bot"}
+
+
+@app.head("/")
+async def root_head() -> Response:
+    """Explicit HEAD handler to satisfy some health checkers (e.g., Render) that send HEAD to '/'.
+
+    Returning 200 avoids 405 Method Not Allowed and unexpected re-deploys from Render's health checks.
+    """
+    return Response(status_code=200)
 
 
 @app.post('/debug/register')
