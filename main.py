@@ -70,6 +70,15 @@ async def lifespan(app: FastAPI):
             logger.info("Telegram application stopped via lifespan.")
         except Exception:
             pass
+    # Signal handler: log termination reason if process receives SIGTERM/SIGINT
+    try:
+        import signal
+        def _log_signal(sig, frame):
+            logger.info('Process received signal %s; exiting', sig)
+        signal.signal(signal.SIGTERM, _log_signal)
+        signal.signal(signal.SIGINT, _log_signal)
+    except Exception:
+        logger.debug('Could not set signal handlers for logging')
 
 app = FastAPI(lifespan=lifespan)
 
