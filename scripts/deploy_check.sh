@@ -4,8 +4,8 @@ set -euo pipefail
 # Usage: source .env && ./scripts/deploy_check.sh
 # The script will validate the deployment health: /status, HEAD /, webhook info.
 
-: "${TELEGRAM_BOT_TOKEN:?Please export TELEGRAM_BOT_TOKEN}")
-: "${TELEGRAM_WEBHOOK_URL:?Please export TELEGRAM_WEBHOOK_URL}")
+: "${TELEGRAM_BOT_TOKEN:?Please export TELEGRAM_BOT_TOKEN}"
+: "${TELEGRAM_WEBHOOK_URL:?Please export TELEGRAM_WEBHOOK_URL}"
 
 echo "==> Checking /status"
 if curl -s --fail "${TELEGRAM_WEBHOOK_URL%/}"/status | jq . >/dev/null; then
@@ -32,6 +32,18 @@ if [ -n "${TELEGRAM_BOT_TOKEN}" ]; then
   else
     echo "OK: webhook is set to: $url"
   fi
+fi
+
+echo "==> All checks passed (or reported warnings)."
+
+# Extra validations for common production mistakes
+if [[ "${TELEGRAM_WEBHOOK_URL}" != *"/webhook/"* ]]; then
+  echo "ERROR: TELEGRAM_WEBHOOK_URL does not contain '/webhook/' path. Use the full webhook path (e.g. https://my-domain.com/webhook/telegram)."
+  exit 1
+fi
+
+if [[ "${DELETE_WEBHOOK_ON_POLLING:-0}" == "1" ]]; then
+  echo "WARN: DELETE_WEBHOOK_ON_POLLING=1 (remove this in Render where the bot runs as webhook)."
 fi
 
 echo "==> All checks passed (or reported warnings)."

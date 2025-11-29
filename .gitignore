@@ -6,3 +6,5 @@ venv/
 .env.local
 .vscode/
 .env.example
+nohup.out
+.pytest_cache/

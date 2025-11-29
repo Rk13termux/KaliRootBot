@@ -105,3 +105,17 @@ The bot also uses emojis to make replies more human-friendly. Examples include:
 
 The AI response is prefixed with a small emoji (🤖) to indicate a generated reply.
 
+---
+
+Manual deploy (Render)
+----------------------
+This repository has been configured to do manual deploys to Render. We archived CI workflows (they are no longer auto-run on push/PR). To deploy manually:
+
+1. Push the branch/tag you want to GitHub.
+2. Open Render dashboard and select your service.
+3. Ensure Auto-Deploy is turned off.
+4. Click 'Manual Deploy' -> 'Deploy Latest' (or similar) to deploy from the latest commit.
+5. Ensure environment variables under 'Environment' are set (TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET, SUPABASE keys, GROQ_API_KEY, etc.).
+
+If you want to re-enable CI or GitHub-based deploys later, we can restore or add a CI job to only deploy on tags.
+

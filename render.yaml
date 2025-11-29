@@ -2,6 +2,7 @@ services:
   - type: web
     name: kali-tutor-bot
     env: python
+    healthCheckPath: /status
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
@@ -22,4 +23,8 @@ services:
       - key: TELEGRAM_WEBHOOK_URL
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: DELETE_WEBHOOK_ON_POLLING
+        sync: false
+      - key: PERSIST_WEBHOOK_ON_SHUTDOWN
         sync: false
