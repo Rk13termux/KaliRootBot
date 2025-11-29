@@ -39,6 +39,8 @@ async def lifespan(app: FastAPI):
             # Quick warning if the configured webhook URL lacks a path
             if TELEGRAM_WEBHOOK_URL.rstrip('/').endswith('onrender.com'):
                 logger.warning('TELEGRAM_WEBHOOK_URL appears to be the root domain. Consider using the full webhook path: https://<your-domain>/webhook/telegram')
+            if '/webhook' not in TELEGRAM_WEBHOOK_URL:
+                logger.warning('TELEGRAM_WEBHOOK_URL does not include a webhook path. POSTs to the root path may return 405; consider using /webhook/telegram')
             try:
                 logger.info('Setting Telegram webhook to %s', TELEGRAM_WEBHOOK_URL)
                 # If a secret token is provided, register it with the webhook so Telegram
@@ -68,15 +70,18 @@ async def lifespan(app: FastAPI):
             await telegram_app.shutdown()
             TELEGRAM_STARTED = False
             logger.info("Telegram application stopped via lifespan.")
-        # Cancel heartbeat task if present
-        hb = app.extra.get('heartbeat_task') if hasattr(app, 'extra') else None
-        if hb:
-            try:
-                hb.cancel()
-            except Exception:
-                pass
         except Exception:
-            pass
+            logger.exception('Error while stopping Telegram application')
+        # Cancel heartbeat task if present (outside the try/except to always attempt cancellation)
+        try:
+            hb = app.extra.get('heartbeat_task') if hasattr(app, 'extra') else None
+            if hb:
+                try:
+                    hb.cancel()
+                except Exception:
+                    logger.exception('Failed to cancel heartbeat task')
+        except Exception:
+            logger.exception('Error while attempting to cancel heartbeat task')
     # Signal handler: log termination reason if process receives SIGTERM/SIGINT
     try:
         import signal
