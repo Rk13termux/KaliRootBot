@@ -119,3 +119,11 @@ This repository has been configured to do manual deploys to Render. We archived 
 
 If you want to re-enable CI or GitHub-based deploys later, we can restore or add a CI job to only deploy on tags.
 
+Production environment variables (recommended):
+
+- `LOG_LEVEL` (INFO|DEBUG) — default INFO; set to DEBUG for troubleshooting
+- `ENABLE_DEBUG_ENDPOINTS` (0|1) — default 0 in production; set to 1 to enable debug routes
+- `UVICORN_WORKERS` — number of workers to run with uvicorn (default 1)
+- `PERSIST_WEBHOOK_ON_SHUTDOWN` — recommended 1 to avoid webhook delete
+- `DELETE_WEBHOOK_ON_POLLING` — should be 0 in production
+
