@@ -1,0 +1,3 @@
+repos: []
+# NOTE: Pre-commit hooks archived and cleared. The pre-commit config was intentionally left empty
+# to avoid active pre-commit hooks while the repo is configured only for manual Render deploys.
