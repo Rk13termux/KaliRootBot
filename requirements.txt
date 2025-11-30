@@ -5,3 +5,4 @@ supabase
 groq
 python-dotenv
 pytest
+python-multipart
