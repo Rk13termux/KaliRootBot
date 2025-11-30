@@ -8,4 +8,5 @@ venv/
 .env.example
 nohup.out
 .pytest_cache/
-.env.env
+.env
+
