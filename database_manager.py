@@ -207,6 +207,30 @@ async def add_credits_from_gumroad(user_id: int, amount: int, product_permalink:
     return True
 
 
+async def get_user_profile(user_id: int) -> dict:
+    """Fetch full user profile including gamification stats."""
+    try:
+        res = supabase.table("usuarios").select("*").eq("user_id", user_id).single().execute()
+        if res.data:
+            return res.data
+        return {}
+    except Exception as e:
+        logger.exception(f"Failed to get user profile for {user_id}: {e}")
+        return {}
+
+
+async def add_xp(user_id: int, amount: int) -> dict:
+    """Add XP to user and return result (including level up info)."""
+    try:
+        res = supabase.rpc("add_xp", {"uid": user_id, "amount": amount}).execute()
+        if res.data:
+            return res.data
+        return {}
+    except Exception as e:
+        logger.exception(f"Failed to add XP for {user_id}: {e}")
+        return {}
+
+
 def test_connection() -> bool:
     """Simple DB check for dev — select 1 user, return True if query succeds."""
     try:
