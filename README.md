@@ -127,3 +127,4 @@ Production environment variables (recommended):
 - `PERSIST_WEBHOOK_ON_SHUTDOWN` — recommended 1 to avoid webhook delete
 - `DELETE_WEBHOOK_ON_POLLING` — should be 0 in production
 
+new
