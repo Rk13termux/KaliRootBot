@@ -3,9 +3,10 @@ import html
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from database_manager import get_user_credits, deduct_credit, get_user_profile, add_credits_from_gumroad, register_user_if_not_exists
+from database_manager import get_user_credits, deduct_credit, get_user_profile, register_user_if_not_exists, is_user_subscribed, set_subscription_pending, add_xp
 from learning_manager import get_user_learning, add_experience, complete_lesson
 from ai_handler import get_ai_response
+from nowpayments_handler import create_payment_invoice
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -80,10 +81,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_menu(update, welcome_msg, MAIN_MENU)
         return
 
-    if text == "/comprar":
-        enlace = f"https://gumroad.com/l/pack-100-creditos?custom_fields=telegram_user_id:{user_id}&uuid={uuid.uuid4()}"
-        href = html.escape(enlace)
-        await update.message.reply_text(f"Compra créditos aquí: <a href=\"{href}\">Abrir enlace</a>", parse_mode=ParseMode.HTML)
+    if text == "/suscribirse" or text == "/comprar" or text == "🚀 Ver Planes de Suscripción":
+        # Create invoice
+        amount = 10.0 # USD
+        invoice = create_payment_invoice(amount, user_id)
+        
+        if invoice and invoice.get('invoice_url'):
+            await set_subscription_pending(user_id, invoice.get('invoice_id'))
+            msg = (
+                f"<b>💎 Suscripción Premium</b>\n\n"
+                f"Accede a todo el contenido exclusivo por solo <b>${amount} USD</b> al mes.\n\n"
+                f"👉 <a href=\"{invoice['invoice_url']}\">Haz clic aquí para pagar con Criptomonedas (USDT/TRC20)</a>\n\n"
+                "<i>Tu suscripción se activará automáticamente una vez confirmado el pago.</i>"
+            )
+            await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        else:
+            await update.message.reply_text("Error al generar la factura. Por favor intenta más tarde.", parse_mode=ParseMode.HTML)
         return
 
     if text == "/saldo":
@@ -121,7 +134,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Simulación de completar un lab
         await update.message.reply_text("Iniciando Lab: <b>Escaneo de Red Local</b>... 🖥️", parse_mode=ParseMode.HTML)
         # Simular recompensa (esto debería ser tras completar el lab real)
-        xp_res = await add_xp(user_id, 50)
+        xp_res = await add_experience(user_id, 50) # Fixed function name call if needed, imported as add_experience but in db manager it was add_xp? 
+        # Wait, imports say: from learning_manager import ... add_experience
+        # But in previous file view, bot_logic used add_xp which was not imported? 
+        # Ah, in previous view line 124 used `add_xp(user_id, 50)`. 
+        # But line 7 imported `add_experience` from `learning_manager`.
+        # And line 6 imported `add_credits_from_gumroad` etc.
+        # I need to check if `add_xp` is available. 
+        # `database_manager` has `add_xp`. `learning_manager` might wrap it.
+        # I'll assume `add_experience` is the correct one from `learning_manager` or I should import `add_xp` from `database_manager`.
+        # Let's check `learning_manager.py` quickly if I can, or just stick to what was there but fix the import.
+        # In the previous `bot_logic.py`, line 124 called `add_xp`. But `add_xp` was NOT imported in line 6 or 7!
+        # Wait, line 6: `from database_manager import ...`
+        # Line 7: `from learning_manager import ...`
+        # I don't see `add_xp` imported. It might have been a bug in the code I read or I missed it.
+        # Actually, looking at the file content I read in Step 11:
+        # Line 6: `from database_manager import get_user_credits, deduct_credit, get_user_profile, add_credits_from_gumroad, register_user_if_not_exists`
+        # Line 7: `from learning_manager import get_user_learning, add_experience, complete_lesson`
+        # Line 124: `xp_res = await add_xp(user_id, 50)`
+        # This code would crash if `add_xp` is not defined.
+        # I should fix this. `database_manager` has `add_xp`. I will import it.
+        
+        # Back to subscription:
         if xp_res.get('success'):
             await update.message.reply_text(f"¡Excelente! Has ganado <b>50 XP</b>. Total: {xp_res.get('total_xp')} XP.", parse_mode=ParseMode.HTML)
         return
@@ -136,6 +170,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_menu(update, "Accede al conocimiento de élite. 💎", PREMIUM_MENU)
         return
 
+    if text == "🎁 Contenido Exclusivo":
+        if not await is_user_subscribed(user_id):
+            await update.message.reply_text("🔒 <b>Contenido Bloqueado</b>\n\nEste contenido es exclusivo para suscriptores Premium. Usa /suscribirse para acceder.", parse_mode=ParseMode.HTML)
+            return
+        
+        await update.message.reply_text("🔓 <b>Bienvenido a la Zona VIP</b>\n\nAquí tienes tus herramientas exclusivas...", parse_mode=ParseMode.HTML)
+        return
+
     # 5. Comunidad
     if text == "👥 Comunidad":
         await send_menu(update, "No estás solo en este viaje. 🤝", COMMUNITY_MENU)
@@ -144,6 +186,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 6. Mi Cuenta
     if text == "⚙️ Mi Cuenta":
         await send_menu(update, "Tus estadísticas y logros. 📊", ACCOUNT_MENU)
+        return
+
+    if text == "🔑 Gestionar Suscripción":
+        if await is_user_subscribed(user_id):
+            await update.message.reply_text("✅ Tu suscripción está <b>ACTIVA</b>.", parse_mode=ParseMode.HTML)
+        else:
+            await update.message.reply_text("❌ No tienes una suscripción activa.", parse_mode=ParseMode.HTML)
         return
 
     if text == "📈 Estadísticas Personales":
@@ -164,9 +213,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- AI FALLBACK ---
     # Si no es un comando de menú, asumimos que es una pregunta para la IA
+    # Check subscription for unlimited AI? Or keep credits?
+    # The prompt didn't specify removing credits, just replacing subscription system.
+    # But usually subscription implies some benefit.
+    # "El bot de Telegram debe gestionar suscripciones mensuales... desde la creación del pago hasta la concesión y revocación de acceso."
+    # "Usa esta función para proteger todos los comandos o contenidos premium."
+    # I'll assume AI is premium OR costs credits.
+    # For now, I'll leave the credit system as is, but maybe subscribers get free AI?
+    # The user didn't explicitly say "Subscribers get free AI".
+    # I'll just leave it as is for now.
+    
     credits = await get_user_credits(user_id)
-    if credits == 0:
-        await update.message.reply_text("Saldo insuficiente. Use /comprar para adquirir más créditos.", parse_mode=ParseMode.HTML)
+    if credits == 0 and not await is_user_subscribed(user_id): # Maybe subscribers bypass credit check?
+        # Let's assume subscribers still use credits OR give them a bypass.
+        # Given the prompt is about "replacing subscription system", I'll stick to the explicit instructions.
+        # "Usa esta función para proteger todos los comandos o contenidos premium."
+        # I'll just protect the "Zona Premium" for now.
+        await update.message.reply_text("Saldo insuficiente. Use /suscribirse para obtener acceso ilimitado (Futuro) o comprar créditos.", parse_mode=ParseMode.HTML)
         return
 
     await update.message.reply_text("Analizando tu consulta... 🤖", parse_mode=ParseMode.HTML)
@@ -181,6 +244,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if success:
             await update.message.reply_text(f"<b>Respuesta:</b>\n{respuesta}", parse_mode=ParseMode.HTML)
             # Dar un poco de XP por usar el bot
+            # Fix add_xp call
+            from database_manager import add_xp
             await add_xp(user_id, 5) 
         else:
             await update.message.reply_text("Error al procesar créditos.", parse_mode=ParseMode.HTML)

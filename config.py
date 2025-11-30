@@ -8,9 +8,10 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GUMROAD_WEBHOOK_SECRET = os.getenv("GUMROAD_WEBHOOK_SECRET")
 TELEGRAM_WEBHOOK_URL = os.getenv("TELEGRAM_WEBHOOK_URL")
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET")
+NOWPAYMENTS_API_KEY = os.getenv("NOWPAYMENTS_API_KEY")
+IPN_SECRET_KEY = os.getenv("IPN_SECRET_KEY")
 
 # Optional controls
 GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')
@@ -35,7 +36,7 @@ def validate_config(require_all: bool = True):
     if SKIP_ENV_VALIDATION:
         return
     missing = []
-    reqs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "GROQ_API_KEY"] if not require_all else ["TELEGRAM_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_ANON_KEY", "GROQ_API_KEY", "GUMROAD_WEBHOOK_SECRET"]
+    reqs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "GROQ_API_KEY"] if not require_all else ["TELEGRAM_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_ANON_KEY", "GROQ_API_KEY", "NOWPAYMENTS_API_KEY", "IPN_SECRET_KEY"]
     for var in reqs:
         if globals().get(var) is None:
             missing.append(var)

@@ -161,50 +161,6 @@ async def deduct_credit(user_id: int) -> bool:
         logger.exception("Failed to attempt fallback deduct/update for user: %s", user_id)
     return success
 
-async def add_credits_from_gumroad(user_id: int, amount: int, product_permalink: str = None, purchase_payload: dict = None) -> bool:
-    # Suma créditos, crea usuario si no existe
-    # Use the atomic RPC `add_credits(uid, amount)` to avoid race conditions and permission problems
-    try:
-        rpc_res = supabase.rpc("add_credits", {"uid": user_id, "amount": amount}).execute()
-        logger.debug(f"add_credits RPC res: data={getattr(rpc_res, 'data', None)} error={getattr(rpc_res, 'error', None)} status={getattr(rpc_res, 'status_code', None)}")
-        # Update metadata purchases list (atomic RPC does balance, so now update metadata separately)
-        try:
-            meta_res = supabase.table("usuarios").select("metadata").eq("user_id", user_id).execute()
-            metadata = meta_res.data[0].get("metadata", {}) if meta_res.data else {}
-        except Exception:
-            metadata = {}
-        purchases = metadata.get("purchases", []) if isinstance(metadata.get("purchases", []), list) else []
-        purchase_record = {"amount": amount, "product_permalink": product_permalink, "payload": purchase_payload}
-        purchases.append(purchase_record)
-        metadata["purchases"] = purchases
-        supabase.table("usuarios").update({"metadata": metadata}).eq("user_id", user_id).execute()
-    except Exception as e_rpc:
-        logger.exception("add_credits RPC failed, falling back to upsert: %s", e_rpc)
-        res = supabase.table("usuarios").select("user_id").eq("user_id", user_id).execute()
-        if res.data:
-            old_balance = supabase.table("usuarios").select("credit_balance").eq("user_id", user_id).execute().data[0]["credit_balance"]
-            new_balance = old_balance + amount
-            # Update balance
-            supabase.table("usuarios").update({"credit_balance": new_balance}).eq("user_id", user_id).execute()
-        logger.info(f"add_credits_from_gumroad({user_id}, {amount}) updated {old_balance}->{new_balance}")
-        # Update metadata purchases list
-        try:
-            meta_res = supabase.table("usuarios").select("metadata").eq("user_id", user_id).execute()
-            metadata = meta_res.data[0].get("metadata", {}) if meta_res.data else {}
-        except Exception:
-            metadata = {}
-        purchases = metadata.get("purchases", []) if isinstance(metadata.get("purchases", []), list) else []
-        purchase_record = {"amount": amount, "product_permalink": product_permalink, "payload": purchase_payload}
-        purchases.append(purchase_record)
-        metadata["purchases"] = purchases
-        supabase.table("usuarios").update({"metadata": metadata}).eq("user_id", user_id).execute()
-    except Exception:
-        # If the add_credits or metadata update failed completely, ensure metadata/purchase is recorded via upsert
-        logger.exception("Failed to add credits via RPC and metadata update; running upsert fallback")
-        # Upsert will either create or update balance/metadata
-        supabase.table("usuarios").upsert({"user_id": user_id, "credit_balance": amount, "metadata": {"purchases": [{"amount": amount, "product_permalink": product_permalink, "payload": purchase_payload}]}}).execute()
-        logger.info(f"add_credits_from_gumroad({user_id}, {amount}) fallback upsert executed")
-    return True
 
 
 async def get_user_profile(user_id: int) -> dict:
@@ -242,3 +198,113 @@ def test_connection() -> bool:
     except Exception as e:
         logger.exception("test_connection failed: %s", e)
         return False
+
+
+async def activate_subscription(user_id: int, invoice_id: str) -> bool:
+    """Activate user subscription for 30 days."""
+    try:
+        from datetime import datetime, timedelta
+        expiry_date = (datetime.now() + timedelta(days=30)).isoformat()
+        
+        data = {
+            "subscription_status": "active",
+            "subscription_expiry_date": expiry_date,
+            "nowpayments_invoice_id": invoice_id
+        }
+        
+        res = supabase.table("usuarios").update(data).eq("user_id", user_id).execute()
+        
+        if getattr(res, 'error', None):
+            logger.error(f"Failed to activate subscription for {user_id}: {res.error}")
+            return False
+            
+        logger.info(f"Subscription activated for user {user_id} until {expiry_date}")
+        return True
+    except Exception as e:
+        logger.exception(f"Error activating subscription for {user_id}: {e}")
+        return False
+
+async def is_user_subscribed(user_id: int) -> bool:
+    """Check if user has an active subscription."""
+    try:
+        from datetime import datetime
+        res = supabase.table("usuarios").select("subscription_status, subscription_expiry_date").eq("user_id", user_id).single().execute()
+        
+        if not res.data:
+            return False
+            
+        status = res.data.get("subscription_status")
+        expiry_str = res.data.get("subscription_expiry_date")
+        
+        if status != "active" or not expiry_str:
+            return False
+            
+        # Parse expiry date (handling potential timezone issues if needed, but ISO format usually works)
+        # Assuming Supabase returns ISO string with timezone
+        expiry_date = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+        
+        # Simple check: is expiry in the future?
+        # We need to make sure we compare timezone-aware with timezone-aware
+        now = datetime.now(expiry_date.tzinfo) 
+        
+        return expiry_date > now
+    except Exception as e:
+        logger.exception(f"Error checking subscription for {user_id}: {e}")
+        return False
+
+async def set_subscription_pending(user_id: int, invoice_id: str) -> bool:
+    """Set subscription status to pending."""
+    try:
+        data = {
+            "subscription_status": "pending",
+            "nowpayments_invoice_id": invoice_id
+        }
+        supabase.table("usuarios").update(data).eq("user_id", user_id).execute()
+        return True
+    except Exception as e:
+        logger.exception(f"Error setting pending subscription for {user_id}: {e}")
+        return False
+
+async def get_expiring_users(days: int = 3) -> list:
+    """Get users whose subscription expires in 'days' days."""
+    try:
+        from datetime import datetime, timedelta
+        # We want users where expiry_date is between now + days and now + days + 1 (roughly)
+        # Or just check for users expiring on that specific day.
+        # Let's say we want to notify anyone expiring in the next 3 days who hasn't been notified?
+        # For simplicity, let's just get users expiring in the range [now + days - 1, now + days + 1]
+        
+        target_date = datetime.now() + timedelta(days=days)
+        start = target_date.replace(hour=0, minute=0, second=0).isoformat()
+        end = target_date.replace(hour=23, minute=59, second=59).isoformat()
+        
+        res = supabase.table("usuarios").select("user_id, subscription_expiry_date").eq("subscription_status", "active").gte("subscription_expiry_date", start).lte("subscription_expiry_date", end).execute()
+        return res.data if res.data else []
+    except Exception as e:
+        logger.exception(f"Error getting expiring users: {e}")
+        return []
+
+async def expire_overdue_subscriptions() -> int:
+    """Set expired subscriptions to inactive. Returns count of updated users."""
+    try:
+        from datetime import datetime
+        now = datetime.now().isoformat()
+        
+        # Find active users with expiry < now
+        res = supabase.table("usuarios").select("user_id").eq("subscription_status", "active").lt("subscription_expiry_date", now).execute()
+        
+        if not res.data:
+            return 0
+            
+        count = 0
+        for user in res.data:
+            uid = user['user_id']
+            # Update to inactive
+            supabase.table("usuarios").update({"subscription_status": "inactive"}).eq("user_id", uid).execute()
+            count += 1
+            logger.info(f"Expired subscription for user {uid}")
+            
+        return count
+    except Exception as e:
+        logger.exception(f"Error expiring subscriptions: {e}")
+        return 0

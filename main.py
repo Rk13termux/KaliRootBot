@@ -9,7 +9,6 @@ import json
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters
 from bot_logic import handle_message
-from gumroad_handler import process_gumroad_webhook
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET, DELETE_WEBHOOK_ON_POLLING, SKIP_ENV_VALIDATION, FALLBACK_AI_TEXT
 from config import validate_config
 
@@ -83,10 +82,45 @@ async def lifespan(app: FastAPI):
                     logger.info('Heartbeat: service alive (pid=%s)', os.getpid())
                 await asyncio.sleep(60)
         hb = asyncio.create_task(_heartbeat())
-        # Use app.state which is recommended (app.extra is not guaranteed)
         app.state.heartbeat_task = hb
+        
+        # Start subscription check task
+        async def _subscription_check_loop():
+            from database_manager import get_expiring_users, expire_overdue_subscriptions
+            while True:
+                try:
+                    logger.info("Running daily subscription check...")
+                    # 1. Expire overdue
+                    expired_count = await expire_overdue_subscriptions()
+                    if expired_count > 0:
+                        logger.info(f"Expired {expired_count} subscriptions.")
+                    
+                    # 2. Notify expiring in 3 days
+                    expiring_users = await get_expiring_users(days=3)
+                    for user in expiring_users:
+                        uid = user['user_id']
+                        try:
+                            await telegram_app.bot.send_message(
+                                chat_id=uid,
+                                text="⚠️ <b>Tu suscripción Premium vence en 3 días.</b>\n\nNo pierdas acceso a tus herramientas exclusivas. Renueva ahora con /suscribirse.",
+                                parse_mode='HTML'
+                            )
+                            logger.info(f"Sent expiry reminder to {uid}")
+                        except Exception as e:
+                            logger.warning(f"Failed to send reminder to {uid}: {e}")
+                            
+                    logger.info("Subscription check complete.")
+                except Exception as e:
+                    logger.exception(f"Error in subscription check loop: {e}")
+                
+                # Wait 24 hours
+                await asyncio.sleep(24 * 3600)
+                
+        sub_task = asyncio.create_task(_subscription_check_loop())
+        app.state.sub_task = sub_task
+        
     except Exception:
-        logger.debug('Could not create heartbeat task')
+        logger.debug('Could not create background tasks')
 
     # yield control to FastAPI loop
     try:
@@ -105,16 +139,16 @@ async def lifespan(app: FastAPI):
             logger.info('Telegram application stopped via lifespan.')
         except Exception:
             logger.exception('Error while stopping Telegram application')
-        # Cancel heartbeat task if present
+        # Cancel tasks
         try:
             hb = getattr(app.state, 'heartbeat_task', None)
             if hb:
-                try:
-                    hb.cancel()
-                except Exception:
-                    logger.exception('Failed to cancel heartbeat task')
+                hb.cancel()
+            st = getattr(app.state, 'sub_task', None)
+            if st:
+                st.cancel()
         except Exception:
-            logger.exception('Error while attempting to cancel heartbeat task')
+            logger.exception('Error while attempting to cancel background tasks')
 
     # Attempt to set signal handlers for additional logging
     try:
@@ -152,11 +186,12 @@ async def telegram_webhook(request: Request):
     return {'status': 'ok'}
 
 
-@app.post('/webhook/gumroad')
-async def gumroad_webhook(request: Request):
-    signature = request.headers.get('X-Gumroad-Signature', '')
+@app.post('/webhook/nowpayments')
+async def nowpayments_webhook(request: Request):
+    signature = request.headers.get('x-nowpayments-sig', '')
     body = await request.body()
-    result = await process_gumroad_webhook(body, signature)
+    from nowpayments_handler import process_nowpayments_webhook
+    result = await process_nowpayments_webhook(body, signature)
     if result['status'] != 200:
         raise HTTPException(status_code=result['status'], detail=result['message'])
     return result
@@ -250,7 +285,6 @@ async def debug_env():
         'SUPABASE_ANON_KEY_present': bool(os.getenv('SUPABASE_ANON_KEY')),
         'SUPABASE_SERVICE_KEY_present': bool(os.getenv('SUPABASE_SERVICE_KEY')),
         'GROQ_API_KEY_present': bool(os.getenv('GROQ_API_KEY')),
-        'GUMROAD_WEBHOOK_SECRET_present': bool(os.getenv('GUMROAD_WEBHOOK_SECRET')),
     }
     return {'status': 'ok', 'env': checks}
 
