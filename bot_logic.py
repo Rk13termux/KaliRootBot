@@ -3,9 +3,8 @@ import html
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from database_manager import get_user_credits, deduct_credit, get_user_profile, add_xp
-from database_manager import register_user_if_not_exists
-from database_manager import add_credits_from_gumroad
+from database_manager import get_user_credits, deduct_credit, get_user_profile, add_credits_from_gumroad, register_user_if_not_exists
+from learning_manager import get_user_learning, add_experience, complete_lesson
 from ai_handler import get_ai_response
 import uuid
 
