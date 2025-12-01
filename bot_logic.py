@@ -304,7 +304,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Asumo que se refiere a la opción del menú principal o un submenú.
     # Si "📞 Contactar Soporte" es una opción, la manejamos aquí.
     
-    if text == "📞 Contactar Soporte":
+    if text == "📩 Contactar Soporte" or text == "📞 Contactar Soporte":
         # Reemplaza 'TuUsuarioDeSoporte' con tu username real sin @
         support_username = "KaliRootHack" 
         

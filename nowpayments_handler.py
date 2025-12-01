@@ -22,6 +22,9 @@ def create_payment_invoice(amount_usd: float, user_id: int) -> dict:
     if not NOWPAYMENTS_API_KEY:
         logger.error("NOWPAYMENTS_API_KEY is not set")
         return None
+        
+    logger.info(f"Using NOWPayments API URL: {NOWPAYMENTS_API_URL}")
+    logger.info(f"API Key starts with: {NOWPAYMENTS_API_KEY[:4]}***")
 
     headers = {
         "x-api-key": NOWPAYMENTS_API_KEY,
