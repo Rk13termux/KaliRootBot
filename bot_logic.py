@@ -299,10 +299,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🔓 <b>Bienvenido a la Zona VIP</b>\n\nAquí tienes tus herramientas exclusivas...", parse_mode=ParseMode.HTML)
         return
 
-    # 5. Comunidad
-    if text == "👥 Comunidad":
-        await send_menu(update, "No estás solo en este viaje. 🤝", COMMUNITY_MENU)
+    # 5. Comunidad (Reemplazado por Soporte Directo o mantenemos menú?)
+    # El usuario pidió "en contactar soporte abra alguna forma de que el boton los envie a un chat privado"
+    # Asumo que se refiere a la opción del menú principal o un submenú.
+    # Si "📞 Contactar Soporte" es una opción, la manejamos aquí.
+    
+    if text == "📞 Contactar Soporte":
+        # Reemplaza 'TuUsuarioDeSoporte' con tu username real sin @
+        support_username = "KaliRootHack" 
+        
+        msg = (
+            "<b>🆘 CENTRO DE SOPORTE</b>\n\n"
+            "¿Tienes problemas con tu suscripción o necesitas ayuda técnica?\n\n"
+            "Habla directamente con un administrador humano. Estamos aquí para ayudarte a dominar el sistema."
+        )
+        
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = [[InlineKeyboardButton("💬 Abrir Chat con Soporte", url=f"https://t.me/{support_username}")]]
+        
+        await update.message.reply_text(
+            msg,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode=ParseMode.HTML
+        )
         return
+
+    if text == "👥 Comunidad":
+         await send_menu(update, "No estás solo en este viaje. 🤝", COMMUNITY_MENU)
+         return
 
     if text == "🏆 Mis Insignias":
         from database_manager import get_user_badges
