@@ -499,6 +499,203 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"¡Excelente! Has ganado <b>50 XP</b>. Total: {xp_res.get('total_xp')} XP.", parse_mode=ParseMode.HTML)
         return
 
+    # 2. Laboratorios Prácticos
+    if text == "🧪 Laboratorios Prácticos":
+        from labs_content import LAB_CATEGORIES
+        msg = "<b>🧪 LABORATORIOS DE HACKING</b>\n\nSelecciona una categoría para comenzar tu simulación:"
+        
+        keyboard = []
+        row = []
+        for key, name in LAB_CATEGORIES.items():
+            row.append(KeyboardButton(name))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+        keyboard.append([KeyboardButton("🔙 Volver al Menú Principal")])
+        
+        await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        return
+
+    # Handle Lab Category Selection
+    from labs_content import LAB_CATEGORIES, LABS
+    selected_cat = None
+    for key, name in LAB_CATEGORIES.items():
+        if name == text:
+            selected_cat = key
+            break
+            
+    if selected_cat:
+        # Show Labs in this Category
+        from database_manager import get_user_completed_labs
+        completed_labs = await get_user_completed_labs(user_id)
+        
+        msg = f"<b>{text}</b>\n\nSelecciona un escenario:"
+        keyboard = []
+        
+        cat_labs = [l for k, l in LABS.items() if l['cat'] == selected_cat]
+        
+        for lab in cat_labs:
+            lab_id = [k for k, v in LABS.items() if v == lab][0]
+            
+            # Status
+            status = "🔒"
+            if not lab['premium']: status = "🆓" # Free labs
+            if lab_id in completed_labs: status = "✅"
+            
+            # Check Premium Access for visual lock
+            if lab['premium'] and not await is_user_subscribed(user_id):
+                status = "🔒"
+            
+            # Single Column Layout for better readability
+            keyboard.append([KeyboardButton(f"🔬 Lab {lab_id}: {lab['title']} {status}")])
+            
+        keyboard.append([KeyboardButton("🧪 Laboratorios Prácticos")])
+        
+        await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        return
+
+    # Handle Lab Selection
+    if text.startswith("🔬 Lab"):
+        try:
+            import re
+            match = re.search(r'\d+', text)
+            if not match: return
+            lab_id = int(match.group())
+            
+            if lab_id not in LABS: return
+            
+            lab = LABS[lab_id]
+            
+            # Check Premium
+            if lab['premium'] and not await is_user_subscribed(user_id):
+                # Upsell
+                from nowpayments_handler import create_payment_invoice
+                from database_manager import set_subscription_pending
+                from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                amount = 10.0
+                invoice = create_payment_invoice(amount, user_id)
+                
+                msg = (
+                    "⛔ <b>ACCESO DENEGADO: LABORATORIO PREMIUM</b>\n\n"
+                    "Este escenario requiere herramientas avanzadas solo disponibles para suscriptores.\n\n"
+                    "🔓 <b>Desbloquea el Simulador Completo:</b>\n"
+                    "• +20 Escenarios Reales (Redes, Web, Cripto)\n"
+                    "• Herramientas: Nmap, SQLMap, Hashcat (Simuladas)\n"
+                    "• XP Doble y Rangos Exclusivos\n\n"
+                    "👇 <b>Accede ahora:</b>"
+                )
+                
+                kb = []
+                if invoice and invoice.get('invoice_url'):
+                    await set_subscription_pending(user_id, invoice.get('invoice_id'))
+                    kb = [[InlineKeyboardButton("🚀 Desbloquear Laboratorios ($10)", url=invoice['invoice_url'])]]
+                
+                await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
+                return
+            
+            # Show Mission Briefing
+            msg = (
+                f"🕵️‍♂️ <b>MISIÓN: {lab['title'].upper()}</b>\n\n"
+                f"{lab['mission']}\n\n"
+                f"💰 <b>Recompensa:</b> {lab['xp']} XP\n"
+                f"👇 <b>Instrucciones:</b> Pulsa el botón para iniciar la terminal y ejecutar el comando de reconocimiento."
+            )
+            
+            # Action Buttons
+            kb = [
+                [KeyboardButton(f"🖥️ Ejecutar: {lab['command']}")],
+                [KeyboardButton("💡 Pista"), KeyboardButton(f"📂 Volver a {LAB_CATEGORIES[lab['cat']]}")],
+                [KeyboardButton("🧪 Laboratorios Prácticos")]
+            ]
+            
+            await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True), parse_mode=ParseMode.HTML)
+            
+        except Exception as e:
+            logger.error(f"Error showing lab: {e}")
+        return
+
+    # Handle Lab Execution (Simulation)
+    if text.startswith("🖥️ Ejecutar:"):
+        try:
+            command = text.replace("🖥️ Ejecutar: ", "")
+            # Find which lab has this command (Simple lookup, assumes unique commands or context)
+            # Better: We need context. But for now, let's search LABS.
+            current_lab_id = None
+            for lid, l in LABS.items():
+                if l['command'] == command:
+                    current_lab_id = lid
+                    break
+            
+            if not current_lab_id: return
+            
+            lab = LABS[current_lab_id]
+            
+            # Show Terminal Output
+            terminal_msg = (
+                f"💻 <b>TERMINAL KALI LINUX</b>\n"
+                f"<pre language='bash'>root@kali:~# {lab['command']}\n"
+                f"{lab['output']}</pre>\n\n"
+                f"❓ <b>DESAFÍO:</b>\n{lab['question']}\n\n"
+                f"✍️ <b>Escribe tu respuesta abajo (Flag):</b>"
+            )
+            
+            await update.message.reply_text(terminal_msg, parse_mode=ParseMode.HTML)
+            
+            # Set context for answer checking (We can't easily set context in this stateless flow without DB or memory)
+            # Workaround: We will check answers in the generic text handler by matching against ALL active labs flags.
+            # Or better: The user just types the answer. We check if text matches ANY lab flag.
+            
+        except Exception as e:
+            logger.error(f"Error executing lab: {e}")
+        return
+
+    if text == "💡 Pista":
+        await update.message.reply_text(
+            "🔍 <b>PISTA TÁCTICA</b>\n\n"
+            "1. Lee cada línea del output de la terminal.\n"
+            "2. Busca palabras clave como 'PORT', 'VERSION', 'File', 'User'.\n"
+            "3. La flag suele ser un dato concreto (número, nombre, hash).\n\n"
+            "<i>Si te atascas, prueba a ejecutar el comando de nuevo.</i>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Check for Lab Answers (Flags)
+    # This runs for any text that didn't match a command
+    # We iterate through all labs to see if the text matches a flag
+    # To avoid false positives, we only check if the text looks like a flag or answer (short)
+    if len(text) < 50:
+        for lid, l in LABS.items():
+            if text.strip().lower() == l['flag'].lower():
+                # Correct Answer!
+                from database_manager import mark_lab_completed, add_xp, get_user_completed_labs
+                
+                # Check if already completed
+                completed = await get_user_completed_labs(user_id)
+                if lid in completed:
+                    await update.message.reply_text(f"✅ <b>¡Correcto!</b>\nYa habías completado este laboratorio.", parse_mode=ParseMode.HTML)
+                    return
+                
+                # Mark complete
+                await mark_lab_completed(user_id, lid)
+                await add_xp(user_id, l['xp'])
+                
+                await update.message.reply_text(
+                    f"🎉 <b>¡MISIÓN CUMPLIDA!</b>\n\n"
+                    f"✅ Respuesta Correcta: <b>{l['flag']}</b>\n"
+                    f"💰 Has ganado <b>{l['xp']} XP</b>.\n\n"
+                    f"Sigue así, Hacker.",
+                    parse_mode=ParseMode.HTML
+                )
+                
+                # Show navigation
+                kb = [[KeyboardButton(f"📂 Volver a {LAB_CATEGORIES[l['cat']]}")] , [KeyboardButton("🧪 Laboratorios Prácticos")]]
+                await update.message.reply_text("¿Cuál es tu siguiente objetivo?", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+                return
+
     # 3. Desafíos
     if text == "🏆 Desafíos & CTFs":
         await send_menu(update, "¡Demuestra tu valía en la arena! ⚔️", CHALLENGES_MENU)

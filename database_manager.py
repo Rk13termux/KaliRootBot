@@ -421,3 +421,29 @@ async def check_and_award_badges(user_id: int):
             await award_badge(user_id, "White Hat")
     except Exception as e:
         logger.exception(f"Error checking badges: {e}")
+
+async def get_user_completed_labs(user_id: int) -> list:
+    """Retorna una lista de IDs de laboratorios completados por el usuario."""
+    try:
+        response = supabase.table("user_labs").select("lab_id").eq("user_id", user_id).execute()
+        if not response.data:
+            return []
+        return [item['lab_id'] for item in response.data]
+    except Exception as e:
+        logger.error(f"Error fetching completed labs for {user_id}: {e}")
+        return []
+
+async def mark_lab_completed(user_id: int, lab_id: int) -> bool:
+    """Marca un laboratorio como completado."""
+    try:
+        # Check if already completed
+        existing = supabase.table("user_labs").select("id").eq("user_id", user_id).eq("lab_id", lab_id).execute()
+        if existing.data:
+            return True
+            
+        data = {"user_id": user_id, "lab_id": lab_id}
+        supabase.table("user_labs").insert(data).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Error marking lab {lab_id} completed for {user_id}: {e}")
+        return False
