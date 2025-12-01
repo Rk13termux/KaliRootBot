@@ -5,10 +5,10 @@ Sección 1: Gratuita.
 Secciones 2-10: Premium.
 """
 
-# Placeholder link
+# Placeholder link (User provided)
 DEFAULT_LINK = "https://telegra.ph/hola-mundo-de-kaliroot-12-01"
-# Placeholder image (Kali Logo or generic hacker img)
-DEFAULT_IMG = "https://www.kali.org/images/notebook-kali-2022.2.jpg"
+# Placeholder image (More stable URL)
+DEFAULT_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Kali-dragon-icon.svg/1200px-Kali-dragon-icon.svg.png"
 
 SECTIONS = {
     1: {"title": "🌱 Nivel 1: Génesis del Hacker", "free": True},
