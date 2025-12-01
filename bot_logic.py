@@ -111,97 +111,127 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 1. Ruta de Aprendizaje
     if text == "🚀 Mi Ruta de Aprendizaje":
-        # Check Premium
-        if not await is_user_subscribed(user_id):
-            await update.message.reply_text("🔒 <b>Acceso Restringido</b>\n\nLa Ruta de Aprendizaje Completa y los Certificados son exclusivos para usuarios Premium.\n\nUsa /suscribirse para desbloquear tu carrera como Hacker.", parse_mode=ParseMode.HTML)
-            return
-        await send_menu(update, "Tu progreso es tu mapa hacia la maestría. 🗺️", LEARNING_MENU)
-        return
-    
-    if text == "📚 Módulos":
-        if not await is_user_subscribed(user_id):
-            await update.message.reply_text("🔒 Requiere Suscripción Premium.", parse_mode=ParseMode.HTML)
-            return
-
-        from learning_content import MODULES
-        from database_manager import get_user_completed_modules
-        
-        completed = await get_user_completed_modules(user_id)
-        msg = "<b>📚 Módulos de Entrenamiento:</b>\n\n"
-        
-        # Logic: User can access Module 1 always.
-        # Can access Module N if Module N-1 is completed.
-        
-        can_access_next = True # Allows accessing the first uncompleted module
+        from learning_content import SECTIONS
+        msg = "<b>🗺️ MAPA DE RUTA HACKER</b>\n\nSelecciona un nivel para comenzar tu entrenamiento:\n\n"
         
         keyboard = []
         row = []
-        
-        for mod_id, data in MODULES.items():
-            status = "🔒"
-            if mod_id in completed:
-                status = "✅"
-                is_accessible = True
-            elif can_access_next:
-                status = "🔓"
-                is_accessible = True
-                can_access_next = False # Only one open module ahead
-            else:
-                status = "🔒"
-                is_accessible = False
-                
-            msg += f"{status} <b>Módulo {mod_id}:</b> {data['title']}\n"
+        for sec_id, data in SECTIONS.items():
+            # Check access
+            is_free = data['free']
+            status = "🔓" if is_free else "🔒"
             
-            if is_accessible:
-                row.append(KeyboardButton(f"📖 Ver Módulo {mod_id}"))
-                if len(row) == 2:
-                    keyboard.append(row)
-                    row = []
+            # If user is subscribed, everything is unlocked
+            if await is_user_subscribed(user_id):
+                status = "🔓"
+            
+            btn_text = f"{status} {data['title']}"
+            row.append(KeyboardButton(btn_text))
+            if len(row) == 1: # One section per row for better visibility
+                keyboard.append(row)
+                row = []
         
         if row:
             keyboard.append(row)
         keyboard.append([KeyboardButton("🔙 Volver al Menú Principal")])
-            
-        await update.message.reply_text(
-            msg + "\n<i>Selecciona un módulo desbloqueado para estudiar.</i>",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
-            parse_mode=ParseMode.HTML
-        )
+        
+        await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
         return
 
-    if text.startswith("📖 Ver Módulo"):
+    # Handle Section Selection
+    # We check if text matches any section title
+    from learning_content import SECTIONS, MODULES
+    selected_section = None
+    for sec_id, data in SECTIONS.items():
+        if data['title'] in text:
+            selected_section = sec_id
+            break
+            
+    if selected_section:
+        # Check Access
+        is_free = SECTIONS[selected_section]['free']
+        if not is_free and not await is_user_subscribed(user_id):
+            await update.message.reply_text(
+                "🔒 <b>ACCESO DENEGADO</b>\n\nEste nivel es exclusivo para miembros Premium.\n\n🔥 <b>Desbloquea los 100 Módulos ahora con /suscribirse</b>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+            
+        # Show Modules for this Section
+        msg = f"<b>{SECTIONS[selected_section]['title']}</b>\n\nSelecciona un módulo:\n"
+        keyboard = []
+        row = []
+        
+        # Filter modules for this section
+        section_modules = [m for k, m in MODULES.items() if m['section'] == selected_section]
+        
+        for mod in section_modules:
+            # We can use the key to identify, but we need to find the key from the value or iterate MODULES items
+            # Let's iterate MODULES items to get the ID
+            mod_id = [k for k, v in MODULES.items() if v == mod][0]
+            
+            btn_text = f"📖 Módulo {mod_id}: {mod['title'][:20]}..." # Truncate for button
+            row.append(KeyboardButton(f"📑 Ver Mod {mod_id}"))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+                
+        if row:
+            keyboard.append(row)
+        keyboard.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")]) # Back to sections
+        
+        await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        return
+
+    if text.startswith("📑 Ver Mod"):
         try:
             mod_id = int(text.split()[-1])
-            from learning_content import MODULES
-            
             if mod_id not in MODULES:
                 return
-
-            # Verify access again strictly
-            from database_manager import get_user_completed_modules
-            completed = await get_user_completed_modules(user_id)
-            
-            # Access rule: Mod 1 is open. Mod N is open if N-1 is in completed.
-            if mod_id > 1 and (mod_id - 1) not in completed:
-                await update.message.reply_text("🔒 Debes completar el módulo anterior primero.", parse_mode=ParseMode.HTML)
-                return
-
-            module = MODULES[mod_id]
-            content = module['content']
-            
-            # Show content
-            await update.message.reply_text(content, parse_mode=ParseMode.HTML)
-            
-            # Show "Complete" button if not completed
-            if mod_id not in completed:
-                kb = [[KeyboardButton(f"✅ Completar Módulo {mod_id}")], [KeyboardButton("📚 Módulos")]]
-                await update.message.reply_text(
-                    "Cuando hayas estudiado este contenido, marca el módulo como completado para recibir tu certificado.",
-                    reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True)
-                )
-            else:
-                await update.message.reply_text("✅ Ya has completado este módulo.", parse_mode=ParseMode.HTML)
                 
+            module = MODULES[mod_id]
+            section = SECTIONS[module['section']]
+            
+            # Verify Access Again
+            if not section['free'] and not await is_user_subscribed(user_id):
+                await update.message.reply_text("🔒 Requiere Suscripción Premium.", parse_mode=ParseMode.HTML)
+                return
+                
+            # Show Content with Inline Button
+            msg = (
+                f"<b>{module['title']}</b>\n\n"
+                f"{module['desc']}\n\n"
+                f"👇 <b>Lee la lección completa aquí:</b>"
+            )
+            
+            from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+            kb = [[InlineKeyboardButton("📖 Leer en Telegraph", url=module['link'])]]
+            
+            # Mark as completed button (optional, or we assume reading is enough? Let's keep the manual complete for certificates)
+            # Actually, user asked for inline button to telegraph. 
+            # We can add a "✅ Marcar como Leído" button below the text message (ReplyKeyboard) or Inline.
+            # Let's keep the ReplyKeyboard for "Complete" to maintain the flow with certificates.
+            
+            await update.message.reply_photo(
+                photo=module['img'],
+                caption=msg,
+                reply_markup=InlineKeyboardMarkup(kb),
+                parse_mode=ParseMode.HTML
+            )
+            
+            # Show "Complete" action in ReplyKeyboard
+            reply_kb = [
+                [KeyboardButton(f"✅ Completar Módulo {mod_id}")],
+                [KeyboardButton(f"{section['title']}")] # Back to section (needs exact text match logic which is tricky, let's go back to sections list)
+            ]
+            # Actually, going back to section list is safer:
+            reply_kb = [[KeyboardButton(f"✅ Completar Módulo {mod_id}")], [KeyboardButton("🚀 Mi Ruta de Aprendizaje")]]
+            
+            await update.message.reply_text(
+                "Cuando termines de leer, marca el módulo como completado:",
+                reply_markup=ReplyKeyboardMarkup(reply_kb, resize_keyboard=True)
+            )
+            
         except Exception as e:
             logger.error(f"Error showing module: {e}")
         return
