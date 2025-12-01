@@ -190,8 +190,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check Access
         is_free = SECTIONS[selected_section]['free']
         if not is_free and not await is_user_subscribed(user_id):
+            # Generate Invoice for immediate action
+            from nowpayments_handler import create_payment_invoice
+            from database_manager import set_subscription_pending
+            from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            amount = 10.0
+            invoice = create_payment_invoice(amount, user_id)
+            
+            msg = (
+                "⛔ <b>ACCESO CLASIFICADO: NIVEL 5</b>\n\n"
+                "Has llegado al límite de la zona gratuita, Hacker. Lo que sigue es conocimiento de élite que separa a los script kiddies de los profesionales.\n\n"
+                "🔓 <b>Al desbloquear la Zona Premium obtienes:</b>\n"
+                "• 📚 Acceso a los 100 Módulos (De Cero a Experto)\n"
+                "• 🎓 Certificados Oficiales por cada logro\n"
+                "• 🧪 Laboratorios de Hacking Real\n"
+                "• 🤖 IA Ilimitada sin restricciones\n\n"
+                "👇 <b>No te detengas ahora. Tu futuro te espera.</b>"
+            )
+            
+            keyboard = []
+            if invoice and invoice.get('invoice_url'):
+                await set_subscription_pending(user_id, invoice.get('invoice_id'))
+                keyboard = [[InlineKeyboardButton("🚀 Desbloquear Acceso Total ($10)", url=invoice['invoice_url'])]]
+            
             await update.message.reply_text(
-                "🔒 <b>ACCESO DENEGADO</b>\n\nEste nivel es exclusivo para miembros Premium.\n\n🔥 <b>Desbloquea los 100 Módulos ahora con /suscribirse</b>",
+                msg,
+                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
                 parse_mode=ParseMode.HTML
             )
             return
@@ -202,7 +227,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Show Modules for this Section
         msg = f"<b>{SECTIONS[selected_section]['title']}</b>\n\nSelecciona un módulo:\n"
         keyboard = []
-        row = []
         
         # Filter modules for this section
         section_modules = [m for k, m in MODULES.items() if m['section'] == selected_section]
@@ -219,43 +243,45 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if mod_id == 1 or (mod_id - 1) in completed:
                     status = "🔓" # Unlocked/Next
             
-            # Truncate title for button
-            title_short = mod['title']
-            if len(title_short) > 25:
-                title_short = title_short[:22] + "..."
+            # Full Title (Single Column)
+            title = mod['title']
+            # Truncate slightly if extremely long to fit Telegram limit (approx 40-50 chars is safe)
+            if len(title) > 40:
+                title = title[:37] + "..."
                 
-            btn_text = f"{status} {mod_id}. {title_short}"
-            # The button sends "📑 Ver Mod X" to keep logic simple, but displays nice text
-            # Wait, ReplyKeyboardMarkup sends the text on the button.
-            # So I need to handle the button text in the handler.
-            # Let's make the button text contain the ID clearly so we can parse it.
+            btn_text = f"{status} {mod_id}. {title}"
             
-            # Actually, let's use a mapping or just parse "Mod X" or "Módulo X"
-            # To keep it robust, let's use a standard format: "📑 {mod_id}: {title}"
-            # And update the handler to parse it.
-            
-            row.append(KeyboardButton(f"📑 {mod_id}: {title_short}"))
-            if len(row) == 2:
-                keyboard.append(row)
-                row = []
+            # Single column append
+            keyboard.append([KeyboardButton(f"📑 {mod_id}: {title}")])
                 
-        if row:
-            keyboard.append(row)
         keyboard.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")]) # Back to sections
         
         await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
         return
 
     # Updated Handler for Module View
-    # Matches "📑 X: Title" or "📑 Ver Mod X" (legacy)
-    if text.startswith("📑") or text.startswith("▶️ Continuar"):
+    # Matches various button formats:
+    # "📑 X: Title"
+    # "📑 Ver Mod X" (legacy)
+    # "▶️ Continuar: Módulo X"
+    # "▶️ Siguiente: X. Title"
+    # "⬅️ Repasar: X. Title"
+    
+    if (text.startswith("📑") or 
+        text.startswith("▶️ Continuar") or 
+        text.startswith("▶️ Siguiente") or 
+        text.startswith("⬅️ Repasar")):
+        
         try:
-            # Extract ID. Format is usually "📑 ID: Title" or "📑 Ver Mod ID"
+            # Extract ID. 
+            # We look for the first number in the string.
+            # Examples: "📑 5: Redes...", "▶️ Siguiente: 6. Tu Primer..."
             import re
-            # Regex to find the first number in the string
             match = re.search(r'\d+', text)
             if not match:
+                # If no number found, maybe it's just an icon click without number (unlikely with current buttons)
                 return
+            
             mod_id = int(match.group())
             
             if mod_id not in MODULES:
@@ -273,8 +299,35 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from database_manager import get_user_completed_modules
             completed = await get_user_completed_modules(user_id)
             
-            if mod_id > 1 and (mod_id - 1) not in completed:
-                 await update.message.reply_text(f"🔒 <b>Módulo Bloqueado</b>\n\nDebes completar el <b>Módulo {mod_id - 1}</b> antes de avanzar.", parse_mode=ParseMode.HTML)
+            # Find the first incomplete module (The user's real current step)
+            first_incomplete = 1
+            for i in range(1, 101):
+                if i not in completed:
+                    first_incomplete = i
+                    break
+            
+            # If trying to access a future module (skipping steps)
+            if mod_id > first_incomplete:
+                 target_title = MODULES[first_incomplete]['title']
+                 if len(target_title) > 25: target_title = target_title[:22] + "..."
+                 
+                 msg = (
+                     "🔒 <b>ACCESO DENEGADO: MÓDULO BLOQUEADO</b>\n\n"
+                     f"🚫 Estás intentando saltar al <b>Módulo {mod_id}</b>, pero tu entrenamiento debe ser secuencial.\n\n"
+                     f"📍 <b>Tu posición actual:</b> Módulo {first_incomplete - 1} (Completado)\n"
+                     f"🎯 <b>Siguiente objetivo:</b> Debes completar el <b>Módulo {first_incomplete}</b> para avanzar.\n\n"
+                     "<i>Un verdadero hacker no deja brechas en su conocimiento.</i>"
+                 )
+                 
+                 # Redirection Button
+                 kb = [[KeyboardButton(f"▶️ Siguiente: {first_incomplete}. {target_title}")]]
+                 kb.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")])
+                 
+                 await update.message.reply_text(
+                     msg, 
+                     reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True),
+                     parse_mode=ParseMode.HTML
+                 )
                  return
                 
             # Show Content with Inline Button
@@ -294,14 +347,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.HTML
             )
             
-            # Show "Complete" action
-            reply_kb = [
-                [KeyboardButton(f"✅ Completar Módulo {mod_id}")],
-                [KeyboardButton("🚀 Mi Ruta de Aprendizaje")]
-            ]
+            # Check if already completed to adjust Action Button
+            is_completed = mod_id in completed
+            
+            reply_kb = []
+            
+            # --- NEXT / COMPLETE BUTTON ---
+            if is_completed:
+                # If completed, show "Next Module" instead of "Complete"
+                msg_status = "✅ <b>Módulo Completado</b>\nPuedes repasar el contenido o avanzar."
+                
+                # Find next module title for the button
+                next_mod_id = mod_id + 1
+                if next_mod_id in MODULES:
+                     next_title = MODULES[next_mod_id]['title']
+                     if len(next_title) > 25: next_title = next_title[:22] + "..."
+                     reply_kb.append([KeyboardButton(f"▶️ Siguiente: {next_mod_id}. {next_title}")])
+                else:
+                     reply_kb.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")])
+            else:
+                # If not completed, show "Complete" button
+                msg_status = "⚠️ <b>Misión en curso...</b>\n\nCuando hayas asimilado la información, confirma para recibir tu recompensa (XP + Progreso)."
+                reply_kb.append([KeyboardButton(f"✅ Completar Módulo {mod_id}")])
+
+            # --- PREVIOUS BUTTON (From Module 2 onwards) ---
+            if mod_id > 1:
+                prev_mod_id = mod_id - 1
+                if prev_mod_id in MODULES:
+                    prev_title = MODULES[prev_mod_id]['title']
+                    if len(prev_title) > 25: prev_title = prev_title[:22] + "..."
+                    reply_kb.append([KeyboardButton(f"⬅️ Repasar: {prev_mod_id}. {prev_title}")])
+
+            # --- NAVIGATION & MAP ---
+            # Add Section button if completed, otherwise just Map
+            if is_completed:
+                reply_kb.append([KeyboardButton(f"📂 {SECTIONS[module['section']]['title']}")])
+            
+            reply_kb.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")])
             
             await update.message.reply_text(
-                "⚠️ <b>Misión en curso...</b>\n\nCuando hayas asimilado la información, confirma para recibir tu recompensa (XP + Progreso).",
+                msg_status,
                 reply_markup=ReplyKeyboardMarkup(reply_kb, resize_keyboard=True),
                 parse_mode=ParseMode.HTML
             )
@@ -340,7 +425,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     await update.message.reply_text("Hubo un error generando la imagen del certificado, pero tu progreso ha sido guardado.", parse_mode=ParseMode.HTML)
                 
-                # --- SMART NAVIGATION ---
+                # --- SMART NAVIGATION (SINGLE COLUMN WITH TITLES) ---
                 next_mod_id = mod_id + 1
                 prev_mod_id = mod_id - 1
                 current_section_id = MODULES[mod_id]['section']
@@ -348,23 +433,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 keyboard = []
                 
-                # Next Module Button
+                # Next Module Button (Priority)
                 if next_mod_id in MODULES:
-                    # Check if next module is in a different section (Premium check might be needed if crossing boundary)
-                    # But usually "Ver Mod" handles the check.
-                    keyboard.append([KeyboardButton(f"📑 Ver Mod {next_mod_id}")])
+                    next_title = MODULES[next_mod_id]['title']
+                    if len(next_title) > 30: next_title = next_title[:27] + "..."
+                    keyboard.append([KeyboardButton(f"▶️ Siguiente: {next_mod_id}. {next_title}")])
                 
-                # Navigation Row
-                nav_row = []
+                # Previous Module Button
                 if prev_mod_id in MODULES:
-                    nav_row.append(KeyboardButton(f"📑 Ver Mod {prev_mod_id}"))
+                    prev_title = MODULES[prev_mod_id]['title']
+                    if len(prev_title) > 30: prev_title = prev_title[:27] + "..."
+                    keyboard.append([KeyboardButton(f"⬅️ Repasar: {prev_mod_id}. {prev_title}")])
                 
-                nav_row.append(KeyboardButton(f"{current_section_title}")) # Back to Section List (Need to ensure this text triggers section list)
+                # Back to Section
+                keyboard.append([KeyboardButton(f"📂 {current_section_title}")])
                 
-                if nav_row:
-                    keyboard.append(nav_row)
-                    
-                keyboard.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")]) # Back to main map
+                # Back to Map
+                keyboard.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")])
                 
                 await update.message.reply_text(
                     "<b>¿Cuál es tu siguiente paso, Hacker?</b> 💀\n\nContinúa tu entrenamiento o repasa lo aprendido.",
