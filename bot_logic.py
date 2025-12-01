@@ -111,10 +111,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 1. Ruta de Aprendizaje
     if text == "🚀 Mi Ruta de Aprendizaje":
-        from learning_content import SECTIONS
-        msg = "<b>🗺️ MAPA DE RUTA HACKER</b>\n\nSelecciona un nivel para comenzar tu entrenamiento:\n\n"
+        from learning_content import SECTIONS, MODULES
+        from database_manager import get_user_completed_modules
+        
+        completed = await get_user_completed_modules(user_id)
+        
+        # Find next uncompleted module for "Continue" button
+        next_module_id = 1
+        for i in range(1, 101):
+            if i not in completed:
+                next_module_id = i
+                break
+        
+        next_mod_title = MODULES[next_module_id]['title']
+        
+        msg = (
+            "<b>🗺️ MAPA DE RUTA HACKER</b>\n\n"
+            "Tu camino hacia la maestría comienza aquí.\n"
+            f"📊 <b>Progreso Global:</b> {len(completed)}/100 Módulos\n\n"
+            "Selecciona un nivel:"
+        )
         
         keyboard = []
+        
+        # Continue Button
+        keyboard.append([KeyboardButton(f"▶️ Continuar: Módulo {next_module_id}")])
+        
         row = []
         for sec_id, data in SECTIONS.items():
             # Check access
@@ -125,9 +147,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if await is_user_subscribed(user_id):
                 status = "🔓"
             
-            btn_text = f"{status} {data['title']}"
+            # Calculate progress in section
+            sec_mods = [k for k, v in MODULES.items() if v['section'] == sec_id]
+            sec_completed = len([m for m in sec_mods if m in completed])
+            total_sec = len(sec_mods)
+            
+            if sec_completed == total_sec:
+                status = "✅"
+            
+            btn_text = f"{status} {data['title']} ({sec_completed}/{total_sec})"
             row.append(KeyboardButton(btn_text))
-            if len(row) == 1: # One section per row for better visibility
+            if len(row) == 1: # One section per row
                 keyboard.append(row)
                 row = []
         
@@ -138,12 +168,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
         return
 
+    # Handle "Continue" Button
+    if text.startswith("▶️ Continuar:"):
+        try:
+            mod_id = int(text.split("Módulo ")[1])
+            # Trigger the view module logic
+            text = f"📑 Ver Mod {mod_id}"
+            # Fallthrough to next handler
+        except:
+            pass
+
     # Handle Section Selection
-    # We check if text matches any section title
     from learning_content import SECTIONS, MODULES
     selected_section = None
     for sec_id, data in SECTIONS.items():
-        if data['title'] in text:
+        if data['title'] in text: # Simple substring match might be risky if titles overlap, but titles are distinct enough
             selected_section = sec_id
             break
             
@@ -157,6 +196,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
             
+        from database_manager import get_user_completed_modules
+        completed = await get_user_completed_modules(user_id)
+            
         # Show Modules for this Section
         msg = f"<b>{SECTIONS[selected_section]['title']}</b>\n\nSelecciona un módulo:\n"
         keyboard = []
@@ -166,12 +208,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         section_modules = [m for k, m in MODULES.items() if m['section'] == selected_section]
         
         for mod in section_modules:
-            # We can use the key to identify, but we need to find the key from the value or iterate MODULES items
-            # Let's iterate MODULES items to get the ID
             mod_id = [k for k, v in MODULES.items() if v == mod][0]
             
-            btn_text = f"📖 Módulo {mod_id}: {mod['title'][:20]}..." # Truncate for button
-            row.append(KeyboardButton(f"📑 Ver Mod {mod_id}"))
+            # Status Logic
+            if mod_id in completed:
+                status = "✅"
+            else:
+                status = "🔒" # Default locked visual
+                # Check if previous module is completed (or if it's the first one)
+                if mod_id == 1 or (mod_id - 1) in completed:
+                    status = "🔓" # Unlocked/Next
+            
+            # Truncate title for button
+            title_short = mod['title']
+            if len(title_short) > 25:
+                title_short = title_short[:22] + "..."
+                
+            btn_text = f"{status} {mod_id}. {title_short}"
+            # The button sends "📑 Ver Mod X" to keep logic simple, but displays nice text
+            # Wait, ReplyKeyboardMarkup sends the text on the button.
+            # So I need to handle the button text in the handler.
+            # Let's make the button text contain the ID clearly so we can parse it.
+            
+            # Actually, let's use a mapping or just parse "Mod X" or "Módulo X"
+            # To keep it robust, let's use a standard format: "📑 {mod_id}: {title}"
+            # And update the handler to parse it.
+            
+            row.append(KeyboardButton(f"📑 {mod_id}: {title_short}"))
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
@@ -183,34 +246,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
         return
 
-    if text.startswith("📑 Ver Mod"):
+    # Updated Handler for Module View
+    # Matches "📑 X: Title" or "📑 Ver Mod X" (legacy)
+    if text.startswith("📑") or text.startswith("▶️ Continuar"):
         try:
-            mod_id = int(text.split()[-1])
+            # Extract ID. Format is usually "📑 ID: Title" or "📑 Ver Mod ID"
+            import re
+            # Regex to find the first number in the string
+            match = re.search(r'\d+', text)
+            if not match:
+                return
+            mod_id = int(match.group())
+            
             if mod_id not in MODULES:
                 return
                 
             module = MODULES[mod_id]
             section = SECTIONS[module['section']]
             
-            # Verify Access Again
+            # Verify Access
             if not section['free'] and not await is_user_subscribed(user_id):
                 await update.message.reply_text("🔒 Requiere Suscripción Premium.", parse_mode=ParseMode.HTML)
                 return
                 
+            # Verify Sequential Access (Gamification)
+            from database_manager import get_user_completed_modules
+            completed = await get_user_completed_modules(user_id)
+            
+            if mod_id > 1 and (mod_id - 1) not in completed:
+                 await update.message.reply_text(f"🔒 <b>Módulo Bloqueado</b>\n\nDebes completar el <b>Módulo {mod_id - 1}</b> antes de avanzar.", parse_mode=ParseMode.HTML)
+                 return
+                
             # Show Content with Inline Button
             msg = (
-                f"<b>{module['title']}</b>\n\n"
+                f"<b>MÓDULO {mod_id}: {module['title'].upper()}</b>\n\n"
                 f"{module['desc']}\n\n"
-                f"👇 <b>Lee la lección completa aquí:</b>"
+                f"👇 <b>Accede al contenido clasificado:</b>"
             )
             
             from telegram import InlineKeyboardMarkup, InlineKeyboardButton
             kb = [[InlineKeyboardButton("📖 Leer en Telegraph", url=module['link'])]]
-            
-            # Mark as completed button (optional, or we assume reading is enough? Let's keep the manual complete for certificates)
-            # Actually, user asked for inline button to telegraph. 
-            # We can add a "✅ Marcar como Leído" button below the text message (ReplyKeyboard) or Inline.
-            # Let's keep the ReplyKeyboard for "Complete" to maintain the flow with certificates.
             
             await update.message.reply_photo(
                 photo=module['img'],
@@ -219,17 +294,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.HTML
             )
             
-            # Show "Complete" action in ReplyKeyboard
+            # Show "Complete" action
             reply_kb = [
                 [KeyboardButton(f"✅ Completar Módulo {mod_id}")],
-                [KeyboardButton(f"{section['title']}")] # Back to section (needs exact text match logic which is tricky, let's go back to sections list)
+                [KeyboardButton("🚀 Mi Ruta de Aprendizaje")]
             ]
-            # Actually, going back to section list is safer:
-            reply_kb = [[KeyboardButton(f"✅ Completar Módulo {mod_id}")], [KeyboardButton("🚀 Mi Ruta de Aprendizaje")]]
             
             await update.message.reply_text(
-                "Cuando termines de leer, marca el módulo como completado:",
-                reply_markup=ReplyKeyboardMarkup(reply_kb, resize_keyboard=True)
+                "⚠️ <b>Misión en curso...</b>\n\nCuando hayas asimilado la información, confirma para recibir tu recompensa (XP + Progreso).",
+                reply_markup=ReplyKeyboardMarkup(reply_kb, resize_keyboard=True),
+                parse_mode=ParseMode.HTML
             )
             
         except Exception as e:
@@ -241,7 +315,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             mod_id = int(text.split()[-1])
             from database_manager import mark_module_completed, get_user_profile
             from certificate_generator import generate_certificate
-            from learning_content import MODULES
+            from learning_content import MODULES, SECTIONS
             import os
             
             # Mark in DB
@@ -259,7 +333,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 if cert_path and os.path.exists(cert_path):
                     await update.message.reply_photo(photo=open(cert_path, 'rb'), caption=f"🎓 <b>Certificado de Finalización</b>\n\nHas dominado: {module_title}", parse_mode=ParseMode.HTML)
-                    # Clean up
                     try:
                         os.remove(cert_path)
                     except:
@@ -267,8 +340,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     await update.message.reply_text("Hubo un error generando la imagen del certificado, pero tu progreso ha sido guardado.", parse_mode=ParseMode.HTML)
                 
-                # Return to modules
-                await send_menu(update, "¿Listo para el siguiente desafío?", LEARNING_MENU)
+                # --- SMART NAVIGATION ---
+                next_mod_id = mod_id + 1
+                prev_mod_id = mod_id - 1
+                current_section_id = MODULES[mod_id]['section']
+                current_section_title = SECTIONS[current_section_id]['title']
+                
+                keyboard = []
+                
+                # Next Module Button
+                if next_mod_id in MODULES:
+                    # Check if next module is in a different section (Premium check might be needed if crossing boundary)
+                    # But usually "Ver Mod" handles the check.
+                    keyboard.append([KeyboardButton(f"📑 Ver Mod {next_mod_id}")])
+                
+                # Navigation Row
+                nav_row = []
+                if prev_mod_id in MODULES:
+                    nav_row.append(KeyboardButton(f"📑 Ver Mod {prev_mod_id}"))
+                
+                nav_row.append(KeyboardButton(f"{current_section_title}")) # Back to Section List (Need to ensure this text triggers section list)
+                
+                if nav_row:
+                    keyboard.append(nav_row)
+                    
+                keyboard.append([KeyboardButton("🚀 Mi Ruta de Aprendizaje")]) # Back to main map
+                
+                await update.message.reply_text(
+                    "<b>¿Cuál es tu siguiente paso, Hacker?</b> 💀\n\nContinúa tu entrenamiento o repasa lo aprendido.",
+                    reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+                    parse_mode=ParseMode.HTML
+                )
+                
             else:
                 await update.message.reply_text("Error al guardar el progreso. Intenta de nuevo.", parse_mode=ParseMode.HTML)
                 
