@@ -111,18 +111,139 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 1. Ruta de Aprendizaje
     if text == "🚀 Mi Ruta de Aprendizaje":
+        # Check Premium
+        if not await is_user_subscribed(user_id):
+            await update.message.reply_text("🔒 <b>Acceso Restringido</b>\n\nLa Ruta de Aprendizaje Completa y los Certificados son exclusivos para usuarios Premium.\n\nUsa /suscribirse para desbloquear tu carrera como Hacker.", parse_mode=ParseMode.HTML)
+            return
         await send_menu(update, "Tu progreso es tu mapa hacia la maestría. 🗺️", LEARNING_MENU)
         return
     
     if text == "📚 Módulos":
-        msg = (
-            "<b>Módulos Disponibles:</b>\n\n"
-            "✅ <b>Módulo 1: Fundamentos</b> (Completado)\n"
-            "🟡 <b>Módulo 2: Reconocimiento</b> (En curso)\n"
-            "🔒 <b>Módulo 3: Escaneo</b> (Bloqueado)\n\n"
-            "<i>¡Sigue estudiando para desbloquear más!</i>"
+        if not await is_user_subscribed(user_id):
+            await update.message.reply_text("🔒 Requiere Suscripción Premium.", parse_mode=ParseMode.HTML)
+            return
+
+        from learning_content import MODULES
+        from database_manager import get_user_completed_modules
+        
+        completed = await get_user_completed_modules(user_id)
+        msg = "<b>📚 Módulos de Entrenamiento:</b>\n\n"
+        
+        # Logic: User can access Module 1 always.
+        # Can access Module N if Module N-1 is completed.
+        
+        can_access_next = True # Allows accessing the first uncompleted module
+        
+        keyboard = []
+        row = []
+        
+        for mod_id, data in MODULES.items():
+            status = "🔒"
+            if mod_id in completed:
+                status = "✅"
+                is_accessible = True
+            elif can_access_next:
+                status = "🔓"
+                is_accessible = True
+                can_access_next = False # Only one open module ahead
+            else:
+                status = "🔒"
+                is_accessible = False
+                
+            msg += f"{status} <b>Módulo {mod_id}:</b> {data['title']}\n"
+            
+            if is_accessible:
+                row.append(KeyboardButton(f"📖 Ver Módulo {mod_id}"))
+                if len(row) == 2:
+                    keyboard.append(row)
+                    row = []
+        
+        if row:
+            keyboard.append(row)
+        keyboard.append([KeyboardButton("🔙 Volver al Menú Principal")])
+            
+        await update.message.reply_text(
+            msg + "\n<i>Selecciona un módulo desbloqueado para estudiar.</i>",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+            parse_mode=ParseMode.HTML
         )
-        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        return
+
+    if text.startswith("📖 Ver Módulo"):
+        try:
+            mod_id = int(text.split()[-1])
+            from learning_content import MODULES
+            
+            if mod_id not in MODULES:
+                return
+
+            # Verify access again strictly
+            from database_manager import get_user_completed_modules
+            completed = await get_user_completed_modules(user_id)
+            
+            # Access rule: Mod 1 is open. Mod N is open if N-1 is in completed.
+            if mod_id > 1 and (mod_id - 1) not in completed:
+                await update.message.reply_text("🔒 Debes completar el módulo anterior primero.", parse_mode=ParseMode.HTML)
+                return
+
+            module = MODULES[mod_id]
+            content = module['content']
+            
+            # Show content
+            await update.message.reply_text(content, parse_mode=ParseMode.HTML)
+            
+            # Show "Complete" button if not completed
+            if mod_id not in completed:
+                kb = [[KeyboardButton(f"✅ Completar Módulo {mod_id}")], [KeyboardButton("📚 Módulos")]]
+                await update.message.reply_text(
+                    "Cuando hayas estudiado este contenido, marca el módulo como completado para recibir tu certificado.",
+                    reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True)
+                )
+            else:
+                await update.message.reply_text("✅ Ya has completado este módulo.", parse_mode=ParseMode.HTML)
+                
+        except Exception as e:
+            logger.error(f"Error showing module: {e}")
+        return
+
+    if text.startswith("✅ Completar Módulo"):
+        try:
+            mod_id = int(text.split()[-1])
+            from database_manager import mark_module_completed, get_user_profile
+            from certificate_generator import generate_certificate
+            from learning_content import MODULES
+            import os
+            
+            # Mark in DB
+            success = await mark_module_completed(user_id, mod_id)
+            if success:
+                await update.message.reply_text("🎉 ¡Felicidades! Has completado el módulo. Generando tu certificado...", parse_mode=ParseMode.HTML)
+                
+                # Generate Cert
+                user_name = update.effective_user.first_name
+                if update.effective_user.last_name:
+                    user_name += f" {update.effective_user.last_name}"
+                
+                module_title = MODULES[mod_id]['title']
+                cert_path = generate_certificate(user_name, user_id, module_title)
+                
+                if cert_path and os.path.exists(cert_path):
+                    await update.message.reply_photo(photo=open(cert_path, 'rb'), caption=f"🎓 <b>Certificado de Finalización</b>\n\nHas dominado: {module_title}", parse_mode=ParseMode.HTML)
+                    # Clean up
+                    try:
+                        os.remove(cert_path)
+                    except:
+                        pass
+                else:
+                    await update.message.reply_text("Hubo un error generando la imagen del certificado, pero tu progreso ha sido guardado.", parse_mode=ParseMode.HTML)
+                
+                # Return to modules
+                await send_menu(update, "¿Listo para el siguiente desafío?", LEARNING_MENU)
+            else:
+                await update.message.reply_text("Error al guardar el progreso. Intenta de nuevo.", parse_mode=ParseMode.HTML)
+                
+        except Exception as e:
+            logger.exception(f"Error completing module: {e}")
         return
 
     # 2. Laboratorios

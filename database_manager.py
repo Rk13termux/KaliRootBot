@@ -308,3 +308,34 @@ async def expire_overdue_subscriptions() -> int:
     except Exception as e:
         logger.exception(f"Error expiring subscriptions: {e}")
         return 0
+
+async def get_user_completed_modules(user_id: int) -> list:
+    """Returns a list of module IDs completed by the user."""
+    try:
+        # Assuming we created the 'user_modules' table
+        res = supabase.table("user_modules").select("module_id").eq("user_id", user_id).execute()
+        if res.data:
+            return [item['module_id'] for item in res.data]
+        return []
+    except Exception as e:
+        logger.exception(f"Error getting completed modules for {user_id}: {e}")
+        return []
+
+async def mark_module_completed(user_id: int, module_id: int) -> bool:
+    """Marks a module as completed for the user."""
+    try:
+        # Check if already completed
+        existing = await get_user_completed_modules(user_id)
+        if module_id in existing:
+            return True # Already done
+            
+        data = {"user_id": user_id, "module_id": module_id}
+        res = supabase.table("user_modules").insert(data).execute()
+        
+        if getattr(res, 'error', None):
+            logger.error(f"Error marking module {module_id} complete for {user_id}: {res.error}")
+            return False
+        return True
+    except Exception as e:
+        logger.exception(f"Error marking module complete: {e}")
+        return False
