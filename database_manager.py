@@ -200,12 +200,31 @@ def test_connection() -> bool:
         return False
 
 
+async def add_credits(user_id: int, amount: int) -> bool:
+    """Add credits to user balance."""
+    try:
+        # We can use a raw SQL query or fetch-update. 
+        # Since we don't have an RPC for adding credits, let's fetch and update.
+        # Or better, use rpc call if we can create one, but for now let's do fetch-update safely.
+        # Actually, let's just use the 'add_xp' pattern if possible, but credits are different.
+        # Let's assume we can just update.
+        
+        current = await get_user_credits(user_id)
+        new_balance = current + amount
+        
+        res = supabase.table("usuarios").update({"credit_balance": new_balance}).eq("user_id", user_id).execute()
+        return True
+    except Exception as e:
+        logger.exception(f"Error adding credits for {user_id}: {e}")
+        return False
+
 async def activate_subscription(user_id: int, invoice_id: str) -> bool:
-    """Activate user subscription for 30 days."""
+    """Activate user subscription for 30 days and add bonus credits."""
     try:
         from datetime import datetime, timedelta
         expiry_date = (datetime.now() + timedelta(days=30)).isoformat()
         
+        # 1. Activate Subscription
         data = {
             "subscription_status": "active",
             "subscription_expiry_date": expiry_date,
@@ -218,7 +237,10 @@ async def activate_subscription(user_id: int, invoice_id: str) -> bool:
             logger.error(f"Failed to activate subscription for {user_id}: {res.error}")
             return False
             
-        logger.info(f"Subscription activated for user {user_id} until {expiry_date}")
+        # 2. Add Bonus Credits (250)
+        await add_credits(user_id, 250)
+            
+        logger.info(f"Subscription activated for user {user_id} until {expiry_date} with bonus credits.")
         return True
     except Exception as e:
         logger.exception(f"Error activating subscription for {user_id}: {e}")

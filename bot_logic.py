@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 # --- MENUS ---
 MAIN_MENU = [
     [KeyboardButton("🚀 Mi Ruta de Aprendizaje"), KeyboardButton("🧪 Laboratorios Prácticos")],
-    [KeyboardButton("🏆 Desafíos & CTFs"), KeyboardButton("💎 Zona Premium")],
-    [KeyboardButton("👥 Comunidad"), KeyboardButton("⚙️ Mi Cuenta")]
+    [KeyboardButton("🛒 Tienda / Recargas"), KeyboardButton("⚙️ Mi Cuenta")],
+    [KeyboardButton("👥 Comunidad"), KeyboardButton("📩 Contactar Soporte")]
 ]
 
 LEARNING_MENU = [
@@ -57,6 +57,12 @@ async def send_menu(update: Update, text: str, menu: list):
         parse_mode=ParseMode.HTML
     )
 
+async def clean_trigger_message(update: Update):
+    """
+    Disabled: Chat cleaning is turned off.
+    """
+    return
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text
@@ -68,6 +74,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- COMMANDS ---
     if text.strip().split()[0].startswith("/start"):
+        # No cleaning here
         first_name = update.effective_user.first_name
         last_name = update.effective_user.last_name
         username = update.effective_user.username
@@ -78,10 +85,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Soy tu mentor en <b>Kali Linux</b>. Estás a punto de empezar un viaje para dominar las herramientas de los profesionales.\n\n"
             "¿Listo para desbloquear tu potencial? Elige tu camino:"
         )
-        await send_menu(update, welcome_msg, MAIN_MENU)
+        # Welcome Image
+        try:
+            with open('assets/welcome.jpg', 'rb') as img:
+                await update.message.reply_photo(img, caption=welcome_msg, reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error sending welcome image: {e}")
+            # Fallback to text only
+            await send_menu(update, welcome_msg, MAIN_MENU)
         return
 
     if text == "/suscribirse" or text == "/comprar" or text == "🚀 Ver Planes de Suscripción":
+        # No cleaning here
         # Create invoice
         amount = 10.0 # USD
         invoice = create_payment_invoice(amount, user_id)
@@ -100,17 +115,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if text == "/saldo":
+        # No cleaning here
         credits = await get_user_credits(user_id)
         await update.message.reply_text(f"Su saldo actual es: <b>{credits}</b> créditos.", parse_mode=ParseMode.HTML)
         return
 
     # --- MENU NAVIGATION ---
     if text == "🔙 Volver al Menú Principal":
+        # No cleaning here (Generic back)
         await send_menu(update, "Regresando al cuartel general...", MAIN_MENU)
         return
 
     # 1. Ruta de Aprendizaje
     if text == "🚀 Mi Ruta de Aprendizaje":
+        await clean_trigger_message(update) # KEEP CLEANING HERE
         from learning_content import SECTIONS, MODULES
         from database_manager import get_user_completed_modules
         
@@ -123,13 +141,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 next_module_id = i
                 break
         
-        next_mod_title = MODULES[next_module_id]['title']
-        
         msg = (
             "<b>🗺️ MAPA DE RUTA HACKER</b>\n\n"
-            "Tu camino hacia la maestría comienza aquí.\n"
-            f"📊 <b>Progreso Global:</b> {len(completed)}/100 Módulos\n\n"
-            "Selecciona un nivel:"
+            "Has entrado en la zona de entrenamiento táctico. Aquí transformaremos tu curiosidad en una arma cibernética letal.\n\n"
+            f"📊 <b>Tu Progreso Actual:</b> {len(completed)}/100 Módulos Completados\n"
+            "🎯 <b>Objetivo:</b> Dominar las 10 fases del Hacking Ético.\n\n"
+            "<i>Selecciona tu nivel para desplegar las misiones:</i>"
         )
         
         keyboard = []
@@ -148,7 +165,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 status = "🔓"
             
             # Calculate progress in section
-            sec_mods = [k for k, v in MODULES.items() if v['section'] == sec_id]
+            sec_mods = [k for k in MODULES if MODULES[k]['section'] == sec_id]
             sec_completed = len([m for m in sec_mods if m in completed])
             total_sec = len(sec_mods)
             
@@ -165,11 +182,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([KeyboardButton("🔙 Volver al Menú Principal")])
         
-        await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        # Image for Learning Path
+        try:
+            with open('assets/learning.jpg', 'rb') as img:
+                await update.message.reply_photo(img, caption=msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error sending learning path image: {e}")
+            await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
         return
 
     # Handle "Continue" Button
     if text.startswith("▶️ Continuar:"):
+        # Logic handled in next block, but let's clean message here too if possible, 
+        # but the next block needs 'text' to be preserved. 
+        # clean_trigger_message will delete the message object, but 'text' variable persists.
+        await clean_trigger_message(update)
         try:
             mod_id = int(text.split("Módulo ")[1])
             # Trigger the view module logic
@@ -187,6 +214,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             break
             
     if selected_section:
+        await clean_trigger_message(update)
         # Check Access
         is_free = SECTIONS[selected_section]['free']
         if not is_free and not await is_user_subscribed(user_id):
@@ -272,6 +300,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text.startswith("▶️ Siguiente") or 
         text.startswith("⬅️ Repasar")):
         
+        await clean_trigger_message(update)
+        
         try:
             # Extract ID. 
             # We look for the first number in the string.
@@ -307,7 +337,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
             
             # If trying to access a future module (skipping steps)
-            if mod_id > first_incomplete:
+            if mod_id > first_incomplete and mod_id not in completed:
                  target_title = MODULES[first_incomplete]['title']
                  if len(target_title) > 25: target_title = target_title[:22] + "..."
                  
@@ -396,6 +426,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if text.startswith("✅ Completar Módulo"):
+        await clean_trigger_message(update)
         try:
             mod_id = int(text.split()[-1])
             from database_manager import mark_module_completed, get_user_profile
@@ -464,45 +495,45 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.exception(f"Error completing module: {e}")
         return
 
-    # 2. Laboratorios
-    if text == "🧪 Laboratorios Prácticos":
-        await send_menu(update, "Aquí es donde se forjan las habilidades reales. 🔥", LABS_MENU)
-        return
-
-    if text == "🌐 Redes Locales":
-        # Simulación de completar un lab
-        await update.message.reply_text("Iniciando Lab: <b>Escaneo de Red Local</b>... 🖥️", parse_mode=ParseMode.HTML)
-        # Simular recompensa (esto debería ser tras completar el lab real)
-        xp_res = await add_experience(user_id, 50) # Fixed function name call if needed, imported as add_experience but in db manager it was add_xp? 
-        # Wait, imports say: from learning_manager import ... add_experience
-        # But in previous file view, bot_logic used add_xp which was not imported? 
-        # Ah, in previous view line 124 used `add_xp(user_id, 50)`. 
-        # But line 7 imported `add_experience` from `learning_manager`.
-        # And line 6 imported `add_credits_from_gumroad` etc.
-        # I need to check if `add_xp` is available. 
-        # `database_manager` has `add_xp`. `learning_manager` might wrap it.
-        # I'll assume `add_experience` is the correct one from `learning_manager` or I should import `add_xp` from `database_manager`.
-        # Let's check `learning_manager.py` quickly if I can, or just stick to what was there but fix the import.
-        # In the previous `bot_logic.py`, line 124 called `add_xp`. But `add_xp` was NOT imported in line 6 or 7!
-        # Wait, line 6: `from database_manager import ...`
-        # Line 7: `from learning_manager import ...`
-        # I don't see `add_xp` imported. It might have been a bug in the code I read or I missed it.
-        # Actually, looking at the file content I read in Step 11:
-        # Line 6: `from database_manager import get_user_credits, deduct_credit, get_user_profile, add_credits_from_gumroad, register_user_if_not_exists`
-        # Line 7: `from learning_manager import get_user_learning, add_experience, complete_lesson`
-        # Line 124: `xp_res = await add_xp(user_id, 50)`
-        # This code would crash if `add_xp` is not defined.
-        # I should fix this. `database_manager` has `add_xp`. I will import it.
-        
-        # Back to subscription:
-        if xp_res.get('success'):
-            await update.message.reply_text(f"¡Excelente! Has ganado <b>50 XP</b>. Total: {xp_res.get('total_xp')} XP.", parse_mode=ParseMode.HTML)
-        return
-
     # 2. Laboratorios Prácticos
     if text == "🧪 Laboratorios Prácticos":
+        await clean_trigger_message(update)
+        # Check Premium Access FIRST
+        if not await is_user_subscribed(user_id):
+            from nowpayments_handler import create_payment_invoice
+            from database_manager import set_subscription_pending
+            from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            amount = 10.0
+            invoice = create_payment_invoice(amount, user_id)
+            
+            msg = (
+                "⛔ <b>ACCESO CLASIFICADO: LABORATORIOS DE ÉLITE</b>\n\n"
+                "Has intentado acceder al Simulador de Ciberseguridad Avanzado. Esta zona está restringida solo para personal autorizado (Premium).\n\n"
+                "🔓 <b>Al suscribirte obtendrás acceso a:</b>\n"
+                "• 🖥️ <b>Simulador de Terminal Realista:</b> Practica sin riesgos.\n"
+                "• 🚩 <b>100+ Escenarios CTF:</b> Redes, Web, Cripto y Forense.\n"
+                "• 🛠️ <b>Herramientas Pro:</b> Nmap, SQLMap, Hashcat, Metasploit.\n"
+                "• 🏆 <b>Ranking Global:</b> Compite contra otros hackers.\n\n"
+                "👇 <b>Invierte en tu futuro hoy mismo:</b>"
+            )
+            
+            kb = []
+            if invoice and invoice.get('invoice_url'):
+                await set_subscription_pending(user_id, invoice.get('invoice_id'))
+                kb = [[InlineKeyboardButton("🚀 Desbloquear Laboratorios ($10)", url=invoice['invoice_url'])]]
+            
+            await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
+            return
+
+        # If Subscribed, show the full menu
         from labs_content import LAB_CATEGORIES
-        msg = "<b>🧪 LABORATORIOS DE HACKING</b>\n\nSelecciona una categoría para comenzar tu simulación:"
+        msg = (
+            "<b>🧪 LABORATORIOS DE HACKING</b>\n\n"
+            "Bienvenido al simulador, Agente. Aquí pondrás a prueba tu teoría en entornos controlados.\n"
+            "Cada laboratorio es un desafío único diseñado para romper tus límites.\n\n"
+            "<i>Selecciona una categoría para comenzar tu entrenamiento:</i>"
+        )
         
         keyboard = []
         row = []
@@ -515,14 +546,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([KeyboardButton("🔙 Volver al Menú Principal")])
         
-        await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        # Image for Labs
+        try:
+            with open('assets/labs.jpg', 'rb') as img:
+                await update.message.reply_photo(img, caption=msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error sending labs image: {e}")
+            await update.message.reply_text(msg, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True), parse_mode=ParseMode.HTML)
         return
 
     # Handle Lab Category Selection
     from labs_content import LAB_CATEGORIES, LABS
     selected_cat = None
+    
+    # Clean text if it comes from "Volver a" button
+    clean_text = text.replace("📂 Volver a ", "")
+    
     for key, name in LAB_CATEGORIES.items():
-        if name == text:
+        if name == clean_text:
             selected_cat = key
             break
             
@@ -531,7 +572,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from database_manager import get_user_completed_labs
         completed_labs = await get_user_completed_labs(user_id)
         
-        msg = f"<b>{text}</b>\n\nSelecciona un escenario:"
+        msg = f"<b>{clean_text}</b>\n\nSelecciona un escenario:"
         keyboard = []
         
         cat_labs = [l for k, l in LABS.items() if l['cat'] == selected_cat]
@@ -570,7 +611,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Check Premium
             if lab['premium'] and not await is_user_subscribed(user_id):
-                # Upsell
+                # Upsell logic (omitted for brevity, same as before)
                 from nowpayments_handler import create_payment_invoice
                 from database_manager import set_subscription_pending
                 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
@@ -596,13 +637,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
                 return
             
-            # Show Mission Briefing
-            msg = (
-                f"🕵️‍♂️ <b>MISIÓN: {lab['title'].upper()}</b>\n\n"
-                f"{lab['mission']}\n\n"
-                f"💰 <b>Recompensa:</b> {lab['xp']} XP\n"
-                f"👇 <b>Instrucciones:</b> Pulsa el botón para iniciar la terminal y ejecutar el comando de reconocimiento."
-            )
+            # Check if Completed
+            from database_manager import get_user_completed_labs
+            completed_labs = await get_user_completed_labs(user_id)
+            is_completed = lab_id in completed_labs
+            
+            if is_completed:
+                msg = (
+                    f"✅ <b>MISIÓN COMPLETADA: {lab['title'].upper()}</b>\n\n"
+                    f"Ya has dominado este escenario, Hacker.\n\n"
+                    f"🚩 <b>Flag Obtenida:</b> <code>{lab['flag']}</code>\n"
+                    f"💰 <b>XP Ganada:</b> {lab['xp']}\n\n"
+                    f"👇 <b>Opciones:</b> Puedes volver a practicar o buscar un nuevo reto."
+                )
+            else:
+                msg = (
+                    f"🕵️‍♂️ <b>MISIÓN: {lab['title'].upper()}</b>\n\n"
+                    f"{lab['mission']}\n\n"
+                    f"💰 <b>Recompensa:</b> {lab['xp']} XP\n"
+                    f"👇 <b>Instrucciones:</b> Pulsa el botón para iniciar la terminal y ejecutar el comando de reconocimiento."
+                )
             
             # Action Buttons
             kb = [
@@ -697,9 +751,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
     # 3. Desafíos
-    if text == "🏆 Desafíos & CTFs":
-        await send_menu(update, "¡Demuestra tu valía en la arena! ⚔️", CHALLENGES_MENU)
-        return
+    # 3. Desafíos (ELIMINADO)
+    # if text == "🏆 Desafíos & CTFs":
+    #    await send_menu(update, "¡Demuestra tu valía en la arena! ⚔️", CHALLENGES_MENU)
+    #    return
 
     # 4. Premium
     if text == "💎 Zona Premium":
@@ -763,47 +818,107 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_menu(update, "Tus estadísticas y logros. 📊", ACCOUNT_MENU)
         return
 
-    if text == "🔑 Gestionar Suscripción":
+    # 7. Tienda / Recargas (NUEVO SISTEMA)
+    if text == "🛒 Tienda / Recargas" or text == "/tienda":
         is_subscribed = await is_user_subscribed(user_id)
         
-        if is_subscribed:
-            msg = (
-                "✅ <b>ESTADO: ACTIVO</b>\n\n"
-                "¡Gracias, Hacker de Élite! 🎩\n\n"
-                "Estás dentro del círculo exclusivo. Tienes acceso ilimitado a conocimientos que el 99% ignora.\n\n"
-                "<i>Sigue dominando el sistema. Tu potencial no tiene límites.</i>"
-            )
-            await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
-        else:
-            # Generate invoice for the button
-            from nowpayments_handler import create_payment_invoice
-            from database_manager import set_subscription_pending
-            amount = 10.0
-            invoice = create_payment_invoice(amount, user_id)
+        # Definir menú dinámico basado en suscripción
+        store_menu = [[KeyboardButton("💳 Comprar Créditos")]]
+        
+        if not is_subscribed:
+            store_menu.append([KeyboardButton("🔑 Comprar Suscripción")])
             
-            msg = (
-                "❌ <b>ESTADO: INACTIVO</b>\n\n"
-                "⚠️ <b>¡Estás perdiendo ventaja!</b>\n\n"
-                "Mientras lees esto, otros están aprendiendo técnicas avanzadas en nuestra Zona Premium. ¿Te vas a quedar atrás?\n\n"
-                "🔥 <b>Desbloquea AHORA:</b>\n"
-                "• 🎓 Certificados Profesionales\n"
-                "• 🧪 Laboratorios de Hacking Real\n"
-                "• 🤖 IA Ilimitada\n\n"
-                "👇 <b>No lo pienses. Actúa.</b>"
-            )
-            
-            keyboard = []
-            if invoice and invoice.get('invoice_url'):
-                await set_subscription_pending(user_id, invoice.get('invoice_id'))
-                from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-                keyboard = [[InlineKeyboardButton("🚀 Activar Suscripción Premium ($10)", url=invoice['invoice_url'])]]
-            
-            await update.message.reply_text(
-                msg, 
-                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
-                parse_mode=ParseMode.HTML
-            )
+        store_menu.append([KeyboardButton("🔙 Volver al Menú Principal")])
+        
+        msg = (
+            "🛒 <b>BIENVENIDO A LA TIENDA HACKER</b>\n\n"
+            "Aquí puedes adquirir recursos para potenciar tu aprendizaje y herramientas.\n\n"
+            "👇 <b>Selecciona una categoría:</b>"
+        )
+        
+        await send_menu(update, msg, store_menu)
         return
+
+    # Handler: Comprar Créditos
+    if text == "💳 Comprar Créditos":
+        from nowpayments_handler import create_payment_invoice
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        await update.message.reply_text("🔄 Cargando planes de créditos...", parse_mode=ParseMode.HTML)
+        
+        # Generar facturas
+        inv_starter = create_payment_invoice(5.0, user_id, "200_credits")
+        inv_pro = create_payment_invoice(10.0, user_id, "500_credits")
+        inv_elite = create_payment_invoice(20.0, user_id, "1200_credits")
+        
+        msg = (
+            "⚡ <b>RECARGA DE CRÉDITOS IA</b>\n\n"
+            "Obtén potencia de cálculo para nuestra IA sin censura y herramientas avanzadas.\n\n"
+            "📦 <b>PLANES DISPONIBLES:</b>\n\n"
+            "🥉 <b>STARTER</b>\n"
+            "├ 200 Créditos\n"
+            "└ <b>$5.00 USD</b>\n\n"
+            "🥈 <b>HACKER PRO</b> (🔥 <i>Popular</i>)\n"
+            "├ 500 Créditos (+25% Extra)\n"
+            "└ <b>$10.00 USD</b>\n\n"
+            "🥇 <b>ELITE</b> (💎 <i>Mejor Valor</i>)\n"
+            "├ 1200 Créditos (+50% Extra)\n"
+            "└ <b>$20.00 USD</b>\n\n"
+            "👇 <b>Toca el botón para pagar con Cripto (USDT):</b>"
+        )
+        
+        keyboard = []
+        if inv_starter: keyboard.append([InlineKeyboardButton("🥉 Comprar Starter ($5)", url=inv_starter['invoice_url'])])
+        if inv_pro: keyboard.append([InlineKeyboardButton("🥈 Comprar Hacker Pro ($10)", url=inv_pro['invoice_url'])])
+        if inv_elite: keyboard.append([InlineKeyboardButton("🥇 Comprar Elite ($20)", url=inv_elite['invoice_url'])])
+        
+        if not keyboard:
+            await update.message.reply_text("⚠️ Error de conexión con pagos. Intenta más tarde.", parse_mode=ParseMode.HTML)
+            return
+            
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+        return
+
+    # Handler: Comprar Suscripción
+    if text == "🔑 Comprar Suscripción":
+        # Verificar de nuevo por si acaso
+        if await is_user_subscribed(user_id):
+            await update.message.reply_text("✅ ¡Ya tienes una suscripción activa!", parse_mode=ParseMode.HTML)
+            return
+
+        from nowpayments_handler import create_payment_invoice
+        from database_manager import set_subscription_pending
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        await update.message.reply_text("🔄 Generando oferta de suscripción...", parse_mode=ParseMode.HTML)
+        
+        inv_sub = create_payment_invoice(10.0, user_id, "subscription")
+        
+        msg = (
+            "💎 <b>SUSCRIPCIÓN PREMIUM KALI ROOT</b>\n\n"
+            "Desbloquea el potencial completo de la plataforma y conviértete en un profesional.\n\n"
+            "🚀 <b>BENEFICIOS INCLUIDOS:</b>\n"
+            "✅ <b>Acceso Total</b> a los 100 Laboratorios Prácticos\n"
+            "✅ <b>Certificados Oficiales</b> al completar módulos\n"
+            "✅ <b>+250 Créditos IA</b> mensuales de regalo\n"
+            "✅ <b>Soporte Prioritario</b> directo\n"
+            "✅ <b>Insignias Exclusivas</b> en tu perfil\n\n"
+            "🏷 <b>PRECIO:</b> $10.00 USD / Mes\n\n"
+            "👇 <b>Únete a la élite ahora:</b>"
+        )
+        
+        keyboard = []
+        if inv_sub:
+            await set_subscription_pending(user_id, inv_sub.get('invoice_id'))
+            keyboard.append([InlineKeyboardButton("🚀 Activar Premium ($10/mes)", url=inv_sub['invoice_url'])])
+        else:
+            await update.message.reply_text("⚠️ Error de conexión con pagos.", parse_mode=ParseMode.HTML)
+            return
+            
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+        return
+
+    # Eliminados handlers antiguos de Desafíos y Gestionar Suscripción
 
     if text == "📈 Estadísticas Personales":
         from database_manager import get_user_profile, get_user_completed_modules
@@ -844,26 +959,74 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # --- AI FALLBACK ---
-    # Si no es un comando de menú, asumimos que es una pregunta para la IA
-    # Check subscription for unlimited AI? Or keep credits?
-    # The prompt didn't specify removing credits, just replacing subscription system.
-    # But usually subscription implies some benefit.
-    # "El bot de Telegram debe gestionar suscripciones mensuales... desde la creación del pago hasta la concesión y revocación de acceso."
-    # "Usa esta función para proteger todos los comandos o contenidos premium."
-    # I'll assume AI is premium OR costs credits.
-    # For now, I'll leave the credit system as is, but maybe subscribers get free AI?
-    # The user didn't explicitly say "Subscribers get free AI".
-    # I'll just leave it as is for now.
-    
     credits = await get_user_credits(user_id)
     is_sub = await is_user_subscribed(user_id)
     
-    if credits == 0 and not is_sub: # Maybe subscribers bypass credit check?
-        # Let's assume subscribers still use credits OR give them a bypass.
-        # Given the prompt is about "replacing subscription system", I'll stick to the explicit instructions.
-        # "Usa esta función para proteger todos los comandos o contenidos premium."
-        # I'll just protect the "Zona Premium" for now.
-        await update.message.reply_text("Saldo insuficiente. Use /suscribirse para obtener acceso ilimitado o comprar créditos.", parse_mode=ParseMode.HTML)
+    # Check if user has credits or subscription (subscribers still need credits but get bonus)
+    if credits == 0 and not is_sub:
+        from nowpayments_handler import create_payment_invoice
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        # Generate invoice for $5 = 200 credits
+        amount = 5.0
+        invoice = create_payment_invoice(amount, user_id, description="200_credits")
+        
+        msg = (
+            "⚠️ <b>CRÉDITOS AGOTADOS: IA BLOQUEADA</b>\n\n"
+            "Has utilizado toda tu capacidad de procesamiento con nuestra IA de élite.\n\n"
+            "🧠 <b>¿Por qué cobramos por la IA?</b>\n"
+            "• Usamos <b>modelos avanzados sin censura</b> (Groq, LLaMA 3.1)\n"
+            "• Respuestas especializadas en ciberseguridad\n"
+            "• Sin límites de contenido técnico\n"
+            "• Mantenimiento de servidores de alto rendimiento\n\n"
+            "💰 <b>RECARGA RÁPIDA:</b>\n"
+            "• $5 USD = 200 Créditos (1 crédito = $0.025)\n"
+            "• $10 USD = 400 Créditos + Descuento 5%\n"
+            "• $20 USD = 850 Créditos + Descuento 10%\n\n"
+            "🎁 <b>BONUS:</b> Al suscribirte Premium ($10/mes) obtienes <b>+250 créditos GRATIS</b> además de acceso total.\n\n"
+        )
+        
+        keyboard = []
+        if invoice and invoice.get('invoice_url'):
+            msg += "👇 <b>Elige tu opción:</b>"
+            keyboard.append([InlineKeyboardButton("💳 Recargar 200 Créditos ($5)", url=invoice['invoice_url'])])
+            keyboard.append([InlineKeyboardButton("🚀 Mejor Oferta: Premium + 250 Créditos ($10)", url=f"https://t.me/{update.effective_chat.username}")])
+        else:
+            # If invoice generation failed
+            msg += (
+                "⚠️ <b>Sistema de pagos temporalmente no disponible.</b>\n\n"
+                "Por favor contacta a soporte para activar créditos manualmente:\n"
+                "👉 /soporta o usa el comando /suscribirse"
+            )
+        
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
+        return
+
+    if credits == 0 and is_sub:
+        # If subscribed but no credits, offer credits only
+        from nowpayments_handler import create_payment_invoice
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        amount = 5.0
+        invoice = create_payment_invoice(amount, user_id, description="200_credits")
+        
+        msg = (
+            "⚠️ <b>CRÉDITOS AGOTADOS</b>\n\n"
+            "Hacker Premium, has usado todos tus créditos de IA este mes.\n\n"
+            "💰 <b>Recarga Express:</b>\n"
+            "• $5 = 200 Créditos\n"
+            "• $10 = 400 Créditos\n"
+            "• $20 = 850 Créditos\n\n"
+        )
+        
+        keyboard = []
+        if invoice and invoice.get('invoice_url'):
+            msg += "👇 <b>Recarga ahora:</b>"
+            keyboard.append([InlineKeyboardButton("💳 Recargar $5 (200 Créditos)", url=invoice['invoice_url'])])
+        else:
+            msg += "⚠️ <b>Sistema de pagos no disponible. Contacta soporte.</b>"
+        
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
         return
 
     await update.message.reply_text("Analizando tu consulta... 🤖", parse_mode=ParseMode.HTML)
@@ -877,12 +1040,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         success = await deduct_credit(user_id)
         if success:
             await update.message.reply_text(f"<b>Respuesta:</b>\n{respuesta}", parse_mode=ParseMode.HTML)
-            # Dar un poco de XP por usar el bot
-            # Fix add_xp call
+            # Award XP for using AI
             from database_manager import add_xp
-            await add_xp(user_id, 5) 
+            await add_xp(user_id, 5)
+            
+            # Show remaining credits
+            new_balance = await get_user_credits(user_id)
+            await update.message.reply_text(f"💰 <b>Créditos Restantes:</b> {new_balance}", parse_mode=ParseMode.HTML)
         else:
-            await update.message.reply_text("Error al procesar créditos.", parse_mode=ParseMode.HTML)
+            # This shouldn't happen as we check credits above, but just in case
+            await update.message.reply_text(
+                "⚠️ <b>Error al procesar créditos.</b>\n\n"
+                "Si este problema persiste, contacta a soporte.",
+                parse_mode=ParseMode.HTML
+            )
     except Exception as e:
         logger.exception("Error procesando mensaje AI")
-        await update.message.reply_text("Ocurrió un error inesperado.", parse_mode=ParseMode.HTML)
+        await update.message.reply_text("Ocurrió un error inesperado. Por favor intenta de nuevo.", parse_mode=ParseMode.HTML)

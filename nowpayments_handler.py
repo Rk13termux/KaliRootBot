@@ -14,9 +14,10 @@ if NOWPAYMENTS_API_KEY.startswith("sandbox"):
 else:
     NOWPAYMENTS_API_URL = "https://api.nowpayments.io/v1"
 
-def create_payment_invoice(amount_usd: float, user_id: int) -> dict:
+def create_payment_invoice(amount_usd: float, user_id: int, description: str = "subscription") -> dict:
     """
     Creates a payment invoice on NOWPayments.
+    description: "subscription" for Premium membership, "200_credits", "400_credits", etc for credit packages
     Returns a dict with 'invoice_url' and 'invoice_id' or None on failure.
     """
     if not NOWPAYMENTS_API_KEY:
@@ -31,27 +32,24 @@ def create_payment_invoice(amount_usd: float, user_id: int) -> dict:
         "Content-Type": "application/json"
     }
     
-    # Using 'invoice' endpoint to get a payment link
-    # Or 'payment' endpoint if we want to specify crypto immediately.
-    # The user request said "Configure el pago para que sea en USDT y en la red TRC-20".
-    # So we should probably use the /payment endpoint or /invoice with specific settings if possible.
-    # However, /invoice usually lets the user choose unless restricted.
-    # Let's try to use /invoice but passing pay_currency if supported, or just let user choose.
-    # But the requirement says "Configure el pago para que sea en USDT y en la red TRC-20".
-    # This implies we might want to create a direct payment or restrict the invoice.
-    # NOWPayments /invoice endpoint doesn't strictly force one currency unless we use the 'pay_currency' param?
-    # Let's check the docs link provided: https://documenter.getpostman.com/view/8256156/SVzVvmQ2?version=latest#66a637f8-3e9b-43b4-a5e8-5384d27b9338
-    # It seems 'invoice' allows 'pay_currency'.
+    # Determine order description based on type
+    if description == "subscription":
+        order_desc = "Suscripción Premium KaliBot (30 días + 250 créditos bonus)"
+    elif "credits" in description:
+        credits_amount = description.split("_")[0]
+        order_desc = f"Recarga de {credits_amount} Créditos IA - KaliBot"
+    else:
+        order_desc = f"KaliBot - {description}"
     
     payload = {
         "price_amount": amount_usd,
         "price_currency": "usd",
         "pay_currency": "usdttrc20", # USDT on TRC-20
-        "ipn_callback_url": "", # Will be set in dashboard or we can override if needed, but usually dashboard is better or we pass it here if we have a public URL.
+        # "ipn_callback_url": "", # Will be set in dashboard or we can override if needed, but usually dashboard is better or we pass it here if we have a public URL.
         # Since we don't know the public URL dynamically easily without config, we assume the dashboard has the IPN set to our webhook,
         # OR we can try to pass it if we have TELEGRAM_WEBHOOK_URL.
-        "order_id": str(user_id), # Use user_id as order_id for simple tracking
-        "order_description": "Suscripción Premium KaliBot"
+        "order_id": f"{user_id}_{description}_{int(__import__('time').time())}", # Unique order ID
+        "order_description": order_desc
     }
     
     # If we have a webhook URL configured, let's append the path
@@ -72,7 +70,8 @@ def create_payment_invoice(amount_usd: float, user_id: int) -> dict:
         
         return {
             "invoice_url": data.get("invoice_url"),
-            "invoice_id": data.get("id")
+            "invoice_id": data.get("id"),
+            "payment_type": description  # Store type for webhook processing
         }
     except Exception as e:
         logger.exception(f"Error creating NOWPayments invoice: {e}")
@@ -169,7 +168,7 @@ async def process_nowpayments_webhook(request_body: bytes, signature_header: str
 
     # Process payment
     payment_status = payload.get("payment_status")
-    order_id = payload.get("order_id") # This is our user_id
+    order_id = payload.get("order_id") # Format: {user_id}_{type}_{timestamp}
     invoice_id = payload.get("invoice_id")
     
     logger.info(f"Received IPN for Order {order_id}: Status {payment_status}")
@@ -177,14 +176,47 @@ async def process_nowpayments_webhook(request_body: bytes, signature_header: str
     if payment_status in ['finished', 'confirmed']:
         if order_id:
             try:
-                user_id = int(order_id)
-                success = await activate_subscription(user_id, str(invoice_id))
-                if success:
-                    return {"status": 200, "message": "Subscription activated"}
+                # Parse order_id to extract user_id and payment type
+                parts = str(order_id).split('_')
+                if len(parts) >= 2:
+                    user_id = int(parts[0])
+                    payment_type = parts[1]
+                    
+                    if payment_type == "subscription":
+                        # Activate subscription (this also adds 250 bonus credits)
+                        success = await activate_subscription(user_id, str(invoice_id))
+                        if success:
+                            return {"status": 200, "message": "Subscription activated"}
+                        else:
+                            return {"status": 500, "message": "Database update failed"}
+                    
+                    elif "credits" in payment_type:
+                        # Add credits based on the package
+                        from database_manager import add_credits
+                        
+                        # Extract credit amount from type (e.g., "200_credits" -> 200)
+                        try:
+                            credit_amount = int(payment_type.split('_')[0])
+                        except:
+                            credit_amount = 200  # Default fallback
+                        
+                        success = await add_credits(user_id, credit_amount)
+                        if success:
+                            logger.info(f"Added {credit_amount} credits to user {user_id}")
+                            return {"status": 200, "message": f"Credits added: {credit_amount}"}
+                        else:
+                            return {"status": 500, "message": "Failed to add credits"}
+                    
+                    else:
+                        logger.warning(f"Unknown payment type: {payment_type}")
+                        return {"status": 400, "message": "Unknown payment type"}
                 else:
-                    return {"status": 500, "message": "Database update failed"}
+                    # Legacy format or invalid
+                    logger.error(f"Invalid order_id format: {order_id}")
+                    return {"status": 400, "message": "Invalid order_id format"}
+                    
             except ValueError:
-                logger.error(f"Invalid order_id (not an int): {order_id}")
+                logger.error(f"Invalid order_id (not parsable): {order_id}")
                 return {"status": 400, "message": "Invalid order_id"}
     
     return {"status": 200, "message": "OK"}

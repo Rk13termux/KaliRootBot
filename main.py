@@ -25,7 +25,16 @@ ENABLE_DEBUG_ENDPOINTS = os.getenv('ENABLE_DEBUG_ENDPOINTS', '0').lower() in ['1
 validate_config()
 if TELEGRAM_BOT_TOKEN is None:
     raise EnvironmentError('TELEGRAM_BOT_TOKEN must be set in production')
-telegram_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+# Build Application with increased timeouts
+telegram_app = (
+    Application.builder()
+    .token(TELEGRAM_BOT_TOKEN)
+    .read_timeout(30)
+    .write_timeout(30)
+    .connect_timeout(30)
+    .pool_timeout(30)
+    .build()
+)
 telegram_app.add_handler(CommandHandler('start', handle_message))
 telegram_app.add_handler(CommandHandler('saldo', handle_message))
 telegram_app.add_handler(CommandHandler('comprar', handle_message))
