@@ -304,32 +304,104 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_menu(update, "No estás solo en este viaje. 🤝", COMMUNITY_MENU)
         return
 
+    if text == "🏆 Mis Insignias":
+        from database_manager import get_user_badges
+        badges = await get_user_badges(user_id)
+        
+        if not badges:
+            await update.message.reply_text("Todavía no tienes insignias. ¡Completa módulos y usa el bot para ganarlas! 🎖️", parse_mode=ParseMode.HTML)
+            return
+            
+        msg = "<b>🏆 TUS INSIGNIAS:</b>\n\n"
+        for b in badges:
+            msg += f"{b['icon']} <b>{b['name']}</b>\n<i>{b['description']}</i>\n\n"
+            
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        return
+
     # 6. Mi Cuenta
     if text == "⚙️ Mi Cuenta":
         await send_menu(update, "Tus estadísticas y logros. 📊", ACCOUNT_MENU)
         return
 
     if text == "🔑 Gestionar Suscripción":
-        if await is_user_subscribed(user_id):
-            await update.message.reply_text("✅ Tu suscripción está <b>ACTIVA</b>.", parse_mode=ParseMode.HTML)
-        else:
-            await update.message.reply_text("❌ No tienes una suscripción activa.", parse_mode=ParseMode.HTML)
-        return
-
-    if text == "📈 Estadísticas Personales":
-        profile = await get_user_profile(user_id)
-        if profile:
+        is_subscribed = await is_user_subscribed(user_id)
+        
+        if is_subscribed:
             msg = (
-                f"👤 <b>Perfil de Hacker:</b>\n\n"
-                f"🏅 <b>Nivel:</b> {profile.get('level', 1)}\n"
-                f"✨ <b>XP:</b> {profile.get('xp', 0)}\n"
-                f"🔥 <b>Racha:</b> {profile.get('streak_days', 0)} días\n"
-                f"💳 <b>Créditos:</b> {profile.get('credit_balance', 0)}\n"
-                f"🎖 <b>Rango:</b> {profile.get('subscription_tier', 'Novato').title()}"
+                "✅ <b>ESTADO: ACTIVO</b>\n\n"
+                "¡Gracias, Hacker de Élite! 🎩\n\n"
+                "Estás dentro del círculo exclusivo. Tienes acceso ilimitado a conocimientos que el 99% ignora.\n\n"
+                "<i>Sigue dominando el sistema. Tu potencial no tiene límites.</i>"
             )
             await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         else:
-            await update.message.reply_text("Error al cargar perfil.", parse_mode=ParseMode.HTML)
+            # Generate invoice for the button
+            from nowpayments_handler import create_payment_invoice
+            from database_manager import set_subscription_pending
+            amount = 10.0
+            invoice = create_payment_invoice(amount, user_id)
+            
+            msg = (
+                "❌ <b>ESTADO: INACTIVO</b>\n\n"
+                "⚠️ <b>¡Estás perdiendo ventaja!</b>\n\n"
+                "Mientras lees esto, otros están aprendiendo técnicas avanzadas en nuestra Zona Premium. ¿Te vas a quedar atrás?\n\n"
+                "🔥 <b>Desbloquea AHORA:</b>\n"
+                "• 🎓 Certificados Profesionales\n"
+                "• 🧪 Laboratorios de Hacking Real\n"
+                "• 🤖 IA Ilimitada\n\n"
+                "👇 <b>No lo pienses. Actúa.</b>"
+            )
+            
+            keyboard = []
+            if invoice and invoice.get('invoice_url'):
+                await set_subscription_pending(user_id, invoice.get('invoice_id'))
+                from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = [[InlineKeyboardButton("🚀 Activar Suscripción Premium ($10)", url=invoice['invoice_url'])]]
+            
+            await update.message.reply_text(
+                msg, 
+                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
+                parse_mode=ParseMode.HTML
+            )
+        return
+
+    if text == "📈 Estadísticas Personales":
+        from database_manager import get_user_profile, get_user_completed_modules
+        from gamification_manager import generate_user_stats_chart
+        import os
+        
+        profile = await get_user_profile(user_id)
+        completed_modules = await get_user_completed_modules(user_id)
+        
+        # Prepare stats for chart
+        stats = {
+            'modules_completed': len(completed_modules),
+            'ai_usage': profile.get('ai_usage_count', 0),
+            'level': profile.get('level', 1),
+            'xp': profile.get('xp', 0)
+        }
+        
+        # Generate Chart
+        chart_path = generate_user_stats_chart(user_id, stats)
+        
+        caption = (
+            f"📊 <b>TUS ESTADÍSTICAS</b>\n\n"
+            f"👤 <b>Hacker:</b> {update.effective_user.first_name}\n"
+            f"🏅 <b>Nivel:</b> {stats['level']}\n"
+            f"✨ <b>XP Total:</b> {stats['xp']}\n"
+            f"📚 <b>Módulos Completados:</b> {stats['modules_completed']}\n"
+            f"🤖 <b>Consultas IA:</b> {stats['ai_usage']}\n"
+        )
+        
+        if chart_path and os.path.exists(chart_path):
+            await update.message.reply_photo(photo=open(chart_path, 'rb'), caption=caption, parse_mode=ParseMode.HTML)
+            try:
+                os.remove(chart_path)
+            except:
+                pass
+        else:
+            await update.message.reply_text(caption, parse_mode=ParseMode.HTML)
         return
 
     # --- AI FALLBACK ---
@@ -345,12 +417,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # I'll just leave it as is for now.
     
     credits = await get_user_credits(user_id)
-    if credits == 0 and not await is_user_subscribed(user_id): # Maybe subscribers bypass credit check?
+    is_sub = await is_user_subscribed(user_id)
+    
+    if credits == 0 and not is_sub: # Maybe subscribers bypass credit check?
         # Let's assume subscribers still use credits OR give them a bypass.
         # Given the prompt is about "replacing subscription system", I'll stick to the explicit instructions.
         # "Usa esta función para proteger todos los comandos o contenidos premium."
         # I'll just protect the "Zona Premium" for now.
-        await update.message.reply_text("Saldo insuficiente. Use /suscribirse para obtener acceso ilimitado (Futuro) o comprar créditos.", parse_mode=ParseMode.HTML)
+        await update.message.reply_text("Saldo insuficiente. Use /suscribirse para obtener acceso ilimitado o comprar créditos.", parse_mode=ParseMode.HTML)
         return
 
     await update.message.reply_text("Analizando tu consulta... 🤖", parse_mode=ParseMode.HTML)

@@ -335,7 +335,89 @@ async def mark_module_completed(user_id: int, module_id: int) -> bool:
         if getattr(res, 'error', None):
             logger.error(f"Error marking module {module_id} complete for {user_id}: {res.error}")
             return False
+            
+        # Check for badges
+        await check_and_award_badges(user_id)
         return True
     except Exception as e:
         logger.exception(f"Error marking module complete: {e}")
         return False
+
+async def increment_ai_usage(user_id: int) -> int:
+    """Increments AI usage count and returns new count."""
+    try:
+        # We can't easily do atomic increment without RPC or raw SQL in supabase-py sometimes,
+        # but let's try to fetch and update or use RPC if we had one.
+        # Fallback: fetch, increment, update.
+        res = supabase.table("usuarios").select("ai_usage_count").eq("user_id", user_id).single().execute()
+        current = res.data.get("ai_usage_count", 0) if res.data else 0
+        new_count = current + 1
+        supabase.table("usuarios").update({"ai_usage_count": new_count}).eq("user_id", user_id).execute()
+        
+        # Check badges
+        if new_count == 10:
+            await award_badge(user_id, "Curioso")
+        elif new_count == 50:
+            await award_badge(user_id, "Investigador")
+            
+        return new_count
+    except Exception as e:
+        logger.exception(f"Error incrementing AI usage: {e}")
+        return 0
+
+async def get_user_badges(user_id: int) -> list:
+    """Returns list of badges (name, icon, description) earned by user."""
+    try:
+        # Join user_badges with badges
+        # Supabase-py join syntax: select("*, badges(*)")
+        res = supabase.table("user_badges").select("awarded_at, badges(name, icon, description)").eq("user_id", user_id).execute()
+        badges = []
+        if res.data:
+            for item in res.data:
+                badge_data = item.get('badges')
+                if badge_data:
+                    badges.append(badge_data)
+        return badges
+    except Exception as e:
+        logger.exception(f"Error getting badges: {e}")
+        return []
+
+async def award_badge(user_id: int, badge_name: str) -> bool:
+    """Awards a badge to a user if they don't have it."""
+    try:
+        # Get badge ID
+        res = supabase.table("badges").select("id").eq("name", badge_name).single().execute()
+        if not res.data:
+            return False
+        badge_id = res.data['id']
+        
+        # Insert (ignore conflict if unique constraint exists)
+        # Supabase upsert or insert with on_conflict is tricky in py client without explicit config.
+        # We'll check existence first or rely on error.
+        check = supabase.table("user_badges").select("id").eq("user_id", user_id).eq("badge_id", badge_id).execute()
+        if check.data:
+            return False # Already has it
+            
+        supabase.table("user_badges").insert({"user_id": user_id, "badge_id": badge_id}).execute()
+        logger.info(f"Awarded badge {badge_name} to {user_id}")
+        return True
+    except Exception as e:
+        logger.exception(f"Error awarding badge: {e}")
+        return False
+
+async def check_and_award_badges(user_id: int):
+    """Checks conditions for learning badges."""
+    try:
+        completed = await get_user_completed_modules(user_id)
+        count = len(completed)
+        
+        if count >= 1:
+            await award_badge(user_id, "Iniciado")
+        if count >= 3:
+            await award_badge(user_id, "Hacker Novato")
+        if count >= 5:
+            await award_badge(user_id, "Script Kiddie")
+        if count >= 10:
+            await award_badge(user_id, "White Hat")
+    except Exception as e:
+        logger.exception(f"Error checking badges: {e}")
