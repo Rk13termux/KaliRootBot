@@ -4,11 +4,6 @@ Estructura: 10 Secciones x 10 Módulos = 100 Módulos.
 Títulos Persuasivos y Profesionales.
 """
 
-# Placeholder link (User provided)
-DEFAULT_LINK = "https://telegra.ph/hola-mundo-de-kaliroot-12-01"
-# Placeholder image (More stable URL)
-DEFAULT_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Kali-dragon-icon.svg/1200px-Kali-dragon-icon.svg.png"
-
 SECTIONS = {
     1: {"title": "🌱 Nivel 1: Génesis del Hacker", "free": True},
     2: {"title": "👻 Nivel 2: Fantasma en la Red", "free": False},
@@ -24,8 +19,116 @@ SECTIONS = {
 
 MODULES = {}
 
+MODULE_LINKS = {
+    1: "https://telegra.ph/KaliRoot-Mod-1-El-Despertar-Instalando-Kali-12-02",
+    2: "https://telegra.ph/KaliRoot-Mod-2-La-Terminal-Tu-Nueva-Lengua-12-02",
+    3: "https://telegra.ph/KaliRoot-Mod-3-Permisos-de-Dios-Root-y-Sudo-12-02",
+    4: "https://telegra.ph/KaliRoot-Mod-4-El-Mapa-del-Tesoro-Filesystem-12-02",
+    5: "https://telegra.ph/KaliRoot-Mod-5-Redes-101-El-Lenguaje-de-Inte-12-02",
+    6: "https://telegra.ph/KaliRoot-Mod-6-Tu-Primer-Laboratorio-Seguro-12-02",
+    7: "https://telegra.ph/KaliRoot-Mod-7-Comandos-Letales-Básicos-12-02",
+    8: "https://telegra.ph/KaliRoot-Mod-8-Editores-de-Código-Nano-y-Vim-12-02",
+    9: "https://telegra.ph/KaliRoot-Mod-9-Automatización-con-Bash-Script-12-02",
+    10: "https://telegra.ph/KaliRoot-Mod-10-Ética-Hacker-El-Código-de-Hon-12-02",
+    11: "https://telegra.ph/KaliRoot-Mod-11-La-Capa-de-Invisibilidad-VPNs-12-02",
+    12: "https://telegra.ph/KaliRoot-Mod-12-Tor-Navegando-en-las-Sombras-12-02",
+    13: "https://telegra.ph/KaliRoot-Mod-13-Proxychains-Saltando-Frontera-12-02",
+    14: "https://telegra.ph/KaliRoot-Mod-14-MAC-Spoofing-Identidad-Falsa-12-02",
+    15: "https://telegra.ph/KaliRoot-Mod-15-Navegadores-Anti-Rastreo-12-02",
+    16: "https://telegra.ph/KaliRoot-Mod-16-Comunicaciones-Encriptadas-PG-12-02",
+    17: "https://telegra.ph/KaliRoot-Mod-17-Limpieza-Forense-de-Logs-12-02",
+    18: "https://telegra.ph/KaliRoot-Mod-18-Tails-OS-El-Sistema-Amnésico-12-02",
+    19: "https://telegra.ph/KaliRoot-Mod-19-Criptomonedas-y-Pagos-Anónimos-12-02",
+    20: "https://telegra.ph/KaliRoot-Mod-20-OpSec-Mentalidad-de-Espía-12-02",
+    21: "https://telegra.ph/KaliRoot-Mod-21-Google-Dorks-Búsqueda-Avanzad-12-02",
+    22: "https://telegra.ph/KaliRoot-Mod-22-TheHarvester-Cosecha-de-Datos-12-02",
+    23: "https://telegra.ph/KaliRoot-Mod-23-Shodan-El-Buscador-del-IoT-12-02",
+    24: "https://telegra.ph/KaliRoot-Mod-24-Maltego-Mapeo-de-Relaciones-12-02",
+    25: "https://telegra.ph/KaliRoot-Mod-25-Metadatos-Secretos-en-Fotos-12-02",
+    26: "https://telegra.ph/KaliRoot-Mod-26-Reconocimiento-de-DNS-12-02",
+    27: "https://telegra.ph/KaliRoot-Mod-27-OSINT-en-Redes-Sociales-12-02",
+    28: "https://telegra.ph/KaliRoot-Mod-28-Wayback-Machine-Viaje-Tempora-12-02",
+    29: "https://telegra.ph/KaliRoot-Mod-29-Escaneo-Pasivo-vs-Activo-12-02",
+    30: "https://telegra.ph/KaliRoot-Mod-30-Creando-el-Dossier-del-Objetiv-12-02",
+    31: "https://telegra.ph/KaliRoot-Mod-31-Nmap-El-Rey-del-Escaneo-12-02",
+    32: "https://telegra.ph/KaliRoot-Mod-32-Escaneos-Sigilosos-Stealth-12-02",
+    33: "https://telegra.ph/KaliRoot-Mod-33-Fingerprinting-de-SO-12-02",
+    34: "https://telegra.ph/KaliRoot-Mod-34-Scripts-NSE-de-Nmap-12-02",
+    35: "https://telegra.ph/KaliRoot-Mod-35-Masscan-Velocidad-Extrema-12-02",
+    36: "https://telegra.ph/KaliRoot-Mod-36-Enumeración-SMB-y-NetBIOS-12-02",
+    37: "https://telegra.ph/KaliRoot-Mod-37-Enumeración-SNMP-12-02",
+    38: "https://telegra.ph/KaliRoot-Mod-38-Detección-de-WAF-e-IPS-12-02",
+    39: "https://telegra.ph/KaliRoot-Mod-39-Mapeo-de-Red-con-Zenmap-12-02",
+    40: "https://telegra.ph/KaliRoot-Mod-40-Escáneres-de-Vulnerabilidades-12-02",
+    41: "https://telegra.ph/KaliRoot-Mod-41-Conceptos-de-Exploits-y-Payloa-12-02",
+    42: "https://telegra.ph/KaliRoot-Mod-42-Searchsploit-Base-de-Datos-12-02",
+    43: "https://telegra.ph/KaliRoot-Mod-43-Buffer-Overflow-Básico-12-02",
+    44: "https://telegra.ph/KaliRoot-Mod-44-Inyección-SQL-SQLi-12-02",
+    45: "https://telegra.ph/KaliRoot-Mod-45-Cross-Site-Scripting-XSS-12-02",
+    46: "https://telegra.ph/KaliRoot-Mod-46-Ejecución-Remota-RCE-12-02",
+    47: "https://telegra.ph/KaliRoot-Mod-47-Inclusión-de-Archivos-LFIRFI-12-02",
+    48: "https://telegra.ph/KaliRoot-Mod-48-Fuerza-Bruta-con-Hydra-12-02",
+    49: "https://telegra.ph/KaliRoot-Mod-49-Ataques-de-Diccionario-12-02",
+    50: "https://telegra.ph/KaliRoot-Mod-50-Análisis-de-Tráfico-con-Wiresh-12-02",
+    51: "https://telegra.ph/KaliRoot-Mod-51-Arquitectura-de-Metasploit-12-02",
+    52: "https://telegra.ph/KaliRoot-Mod-52-Selección-de-Exploits-12-02",
+    53: "https://telegra.ph/KaliRoot-Mod-53-Configuración-de-Payloads-12-02",
+    54: "https://telegra.ph/KaliRoot-Mod-54-Meterpreter-La-Shell-Mágica-12-02",
+    55: "https://telegra.ph/KaliRoot-Mod-55-Msfvenom-Creación-de-Troyanos-12-02",
+    56: "https://telegra.ph/KaliRoot-Mod-56-Persistencia-en-el-Sistema-12-02",
+    57: "https://telegra.ph/KaliRoot-Mod-57-Pivoting-Saltando-entre-Redes-12-02",
+    58: "https://telegra.ph/KaliRoot-Mod-58-Módulos-Auxiliares-12-02",
+    59: "https://telegra.ph/KaliRoot-Mod-59-Armitage-Hacking-Gráfico-12-02",
+    60: "https://telegra.ph/KaliRoot-Mod-60-Evasión-de-Antivirus-Básica-12-02",
+    61: "https://telegra.ph/KaliRoot-Mod-61-Psicología-del-Engaño-12-02",
+    62: "https://telegra.ph/KaliRoot-Mod-62-Phishing-de-Credenciales-12-02",
+    63: "https://telegra.ph/KaliRoot-Mod-63-Spear-Phishing-Dirigido-12-02",
+    64: "https://telegra.ph/KaliRoot-Mod-64-Social-Engineering-Toolkit-SE-12-02",
+    65: "https://telegra.ph/KaliRoot-Mod-65-Creación-de-Payloads-Malicioso-12-02",
+    66: "https://telegra.ph/KaliRoot-Mod-66-Vishing-y-Smishing-12-02",
+    67: "https://telegra.ph/KaliRoot-Mod-67-USB-Drops-El-Caballo-de-Troya-12-02",
+    68: "https://telegra.ph/KaliRoot-Mod-68-Pretexting-y-Escenarios-12-02",
+    69: "https://telegra.ph/KaliRoot-Mod-69-OSINT-para-Ingeniería-Social-12-02",
+    70: "https://telegra.ph/KaliRoot-Mod-70-Defensa-contra-Ingeniería-Soci-12-02",
+    71: "https://telegra.ph/KaliRoot-Mod-71-Historia-de-la-Criptografía-12-02",
+    72: "https://telegra.ph/KaliRoot-Mod-72-Hashes-vs-Encriptación-12-02",
+    73: "https://telegra.ph/KaliRoot-Mod-73-Identificación-de-Hashes-12-02",
+    74: "https://telegra.ph/KaliRoot-Mod-74-John-the-Ripper-12-02",
+    75: "https://telegra.ph/KaliRoot-Mod-75-Hashcat-Poder-de-la-GPU-12-02",
+    76: "https://telegra.ph/KaliRoot-Mod-76-Ataques-de-Rainbow-Tables-12-02",
+    77: "https://telegra.ph/KaliRoot-Mod-77-Esteganografía-12-02",
+    78: "https://telegra.ph/KaliRoot-Mod-78-Cifrado-Asimétrico-RSA-12-02",
+    79: "https://telegra.ph/KaliRoot-Mod-79-Certificados-SSLTLS-12-02",
+    80: "https://telegra.ph/KaliRoot-Mod-80-Cracking-de-Archivos-ZipPDF-12-02",
+    81: "https://telegra.ph/KaliRoot-Mod-81-Escalada-de-Privilegios-Linux-12-02",
+    82: "https://telegra.ph/KaliRoot-Mod-82-Escalada-de-Privilegios-Windo-12-02",
+    83: "https://telegra.ph/KaliRoot-Mod-83-Extracción-de-Credenciales-Mi-12-02",
+    84: "https://telegra.ph/KaliRoot-Mod-84-Keyloggers-12-02",
+    85: "https://telegra.ph/KaliRoot-Mod-85-Movimiento-Lateral-12-02",
+    86: "https://telegra.ph/KaliRoot-Mod-86-Data-Exfiltration-12-02",
+    87: "https://telegra.ph/KaliRoot-Mod-87-Backdoors-Persistentes-12-02",
+    88: "https://telegra.ph/KaliRoot-Mod-88-Borrado-de-Evidencias-Avanzado-12-02",
+    89: "https://telegra.ph/KaliRoot-Mod-89-Rootkits-12-02",
+    90: "https://telegra.ph/KaliRoot-Mod-90-Golden-Ticket-Attack-12-02",
+    91: "https://telegra.ph/KaliRoot-Mod-91-Hacking-de-Redes-Wi-Fi-Aircra-12-02",
+    92: "https://telegra.ph/KaliRoot-Mod-92-Ataques-Man-in-the-Middle-12-02",
+    93: "https://telegra.ph/KaliRoot-Mod-93-Hacking-de-Aplicaciones-Web-O-12-02",
+    94: "https://telegra.ph/KaliRoot-Mod-94-Burp-Suite-Profesional-12-02",
+    95: "https://telegra.ph/KaliRoot-Mod-95-Hacking-Móvil-AndroidiOS-12-02",
+    96: "https://telegra.ph/KaliRoot-Mod-96-Ingeniería-Inversa-Básica-12-02",
+    97: "https://telegra.ph/KaliRoot-Mod-97-Exploit-Development-Buffer-Ov-12-02",
+    98: "https://telegra.ph/KaliRoot-Mod-98-Hacking-de-Infraestructuras-Cl-12-02",
+    99: "https://telegra.ph/KaliRoot-Mod-99-Red-Teaming-vs-Blue-Teaming-12-02",
+    100: "https://telegra.ph/KaliRoot-Mod-100-El-Camino-del-CISO-12-02",
+}
+
+
 def add_mod(id, sec, title, desc):
-    MODULES[id] = {"section": sec, "title": title, "desc": desc, "img": DEFAULT_IMG, "link": DEFAULT_LINK}
+    # Use local asset path
+    img_path = f"assets/module_{id}.jpg"
+    # Use specific link if available, else fallback to a safe default (e.g. root bot link or empty)
+    link = MODULE_LINKS.get(id, "https://t.me/KaliRootBot")
+    MODULES[id] = {"section": sec, "title": title, "desc": desc, "img": img_path, "link": link}
 
 # --- NIVEL 1: GÉNESIS ---
 add_mod(1, 1, "El Despertar: Instalando Kali", "Configura tu entorno de guerra virtual.")

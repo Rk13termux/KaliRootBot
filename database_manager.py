@@ -218,6 +218,53 @@ async def add_credits(user_id: int, amount: int) -> bool:
         logger.exception(f"Error adding credits for {user_id}: {e}")
         return False
 
+# --- MEMORY SYSTEM ---
+
+async def save_chat_interaction(user_id: int, user_msg: str, ai_msg: str):
+    """Saves the user query and AI response to the history."""
+    try:
+        # Save User Message
+        supabase.table("chat_history").insert({
+            "user_id": user_id,
+            "role": "user",
+            "content": user_msg
+        }).execute()
+        
+        # Save AI Response
+        supabase.table("chat_history").insert({
+            "user_id": user_id,
+            "role": "assistant",
+            "content": ai_msg
+        }).execute()
+    except Exception as e:
+        logger.error(f"Failed to save chat history for {user_id}: {e}")
+
+async def get_chat_history(user_id: int, limit: int = 6) -> str:
+    """Retrieves the last N messages formatted as a conversation string."""
+    try:
+        res = supabase.table("chat_history")\
+            .select("role, content")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=True)\
+            .limit(limit)\
+            .execute()
+            
+        if not res.data:
+            return ""
+            
+        # Supabase returns newest first due to desc sort, so we reverse it for the prompt
+        messages = res.data[::-1]
+        
+        history_str = ""
+        for msg in messages:
+            role = "Usuario" if msg['role'] == 'user' else "KalyRoot (AI)"
+            history_str += f"{role}: {msg['content']}\n"
+            
+        return history_str
+    except Exception as e:
+        logger.error(f"Failed to get chat history for {user_id}: {e}")
+        return ""
+
 async def activate_subscription(user_id: int, invoice_id: str) -> bool:
     """Activate user subscription for 30 days and add bonus credits."""
     try:

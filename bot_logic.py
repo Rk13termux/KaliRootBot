@@ -2,7 +2,7 @@ import logging
 import html
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
+from telegram.constants import ParseMode, ChatAction
 from database_manager import get_user_credits, deduct_credit, get_user_profile, register_user_if_not_exists, is_user_subscribed, set_subscription_pending, add_xp
 from learning_manager import get_user_learning, add_experience, complete_lesson
 from ai_handler import get_ai_response
@@ -360,21 +360,35 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                  )
                  return
                 
-            # Show Content with Inline Button
+            # 1. Send local image (Visual Header)
+            try:
+                with open(module['img'], 'rb') as img_file:
+                    await update.message.reply_photo(
+                        photo=img_file,
+                        caption=f"<b>MÓDULO {mod_id}: {module['title'].upper()}</b>",
+                        parse_mode=ParseMode.HTML
+                    )
+            except Exception as e:
+                logger.error(f"Error sending module image {module['img']}: {e}")
+
+            # 2. Send Text with Description (No Link Preview, Button Only)
+            # We remove the explicit link from text to avoid clutter and broken Instant View on Desktop.
+            # The user will use the Inline Button to open the lesson reliably.
+            
             msg = (
-                f"<b>MÓDULO {mod_id}: {module['title'].upper()}</b>\n\n"
                 f"{module['desc']}\n\n"
-                f"👇 <b>Accede al contenido clasificado:</b>"
+                f"👇 <b>Presiona el botón para comenzar:</b>"
             )
             
             from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-            kb = [[InlineKeyboardButton("📖 Leer en Telegraph", url=module['link'])]]
+            # Button opens the link in the default browser/webview, avoiding Desktop bugs
+            kb = [[InlineKeyboardButton("📖 Abrir Lección Completa", url=module['link'])]]
             
-            await update.message.reply_photo(
-                photo=module['img'],
-                caption=msg,
+            await update.message.reply_text(
+                msg,
                 reply_markup=InlineKeyboardMarkup(kb),
-                parse_mode=ParseMode.HTML
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True # FIX: Disable broken preview on Desktop
             )
             
             # Check if already completed to adjust Action Button
@@ -1029,9 +1043,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
         return
 
-    await update.message.reply_text("Analizando tu consulta... 🤖", parse_mode=ParseMode.HTML)
+    # Send typing action (animation in header) instead of text message
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    
     try:
-        respuesta = await get_ai_response(text)
+        respuesta = await get_ai_response(user_id, text)
         from config import FALLBACK_AI_TEXT
         if not respuesta or respuesta.strip() == FALLBACK_AI_TEXT.strip():
             await update.message.reply_text(FALLBACK_AI_TEXT, parse_mode=ParseMode.HTML)
@@ -1044,9 +1060,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from database_manager import add_xp
             await add_xp(user_id, 5)
             
-            # Show remaining credits
-            new_balance = await get_user_credits(user_id)
-            await update.message.reply_text(f"💰 <b>Créditos Restantes:</b> {new_balance}", parse_mode=ParseMode.HTML)
+            # Show remaining credits (REMOVED per user request)
+            # new_balance = await get_user_credits(user_id)
+            # await update.message.reply_text(f"💰 <b>Créditos Restantes:</b> {new_balance}", parse_mode=ParseMode.HTML)
         else:
             # This shouldn't happen as we check credits above, but just in case
             await update.message.reply_text(

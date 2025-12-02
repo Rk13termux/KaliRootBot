@@ -1,0 +1,90 @@
+<h3>🌱 Módulo 1: El Despertar: Instalando Kali Linux 🔧</h3>
+
+<p>¡Bienvenido, neófito, al umbral de un nuevo dominio! 🐉 Este no es simplemente un tutorial de instalación; es tu iniciación. Kali Linux no es un sistema operativo más, es un ecosistema, un arsenal digital forjado para la ofensiva y la defensa en el ciberespacio. Este módulo te guiará en la construcción de tu primer entorno de guerra virtual, explicando la teoría y la estrategia detrás de cada clic y cada comando. Prepárate para despertar.</p>
+
+<h4>🧠 La Filosofía de Kali: Más Allá de un Simple SO</h4>
+
+<p>Antes de descargar un solo byte, debes comprender qué es Kali. No está diseñado para navegar por redes sociales ni para escribir tu tarea de historia. Kali es una distribución basada en Debian, meticulosamente curada para ser la plataforma estándar en pruebas de penetración (pentesting) y auditoría de seguridad. Su filosofía se centra en proporcionar un entorno coherente y estable con cientos de herramientas preinstaladas, listas para ser desatadas. Usar Kali implica una responsabilidad: <strong>el poder que otorga debe ser usado con ética y exclusivamente en entornos donde tienes permiso explícito</strong>. Recordar esto te mantendrá del lado correcto de la ley y te convertirá en un profesional, no en un delincuente.</p>
+
+<h4>⚖️ La Encrucijada del Guerrero: Virtualización vs. Instalación Nativa</h4>
+
+<p>Te enfrentarás a tu primera decisión estratégica crucial. ¿Instalar Kali directamente en tu hardware (bare metal) o virtualizarlo? La respuesta para un profesional en formación es inequívoca: <strong>virtualiza</strong>.</p>
+
+<ul>
+  <li><strong>Instalación Nativa (Bare Metal):</strong> Kali se convierte en tu sistema operativo principal. <em>Desventajas:</em> Altera tu sistema actual, requiere drivers específicos, y cualquier error puede dejar tu PC inutilizable. Es una opción para expertos que necesitan máximo rendimiento y acceso directo al hardware (ej. para ataques Wi-Fi con tarjetas específicas).</li>
+  <li><strong>Virtualización (Máquina Virtual):</strong> Kali corre como una aplicación dentro de tu sistema principal (Windows, macOS, Linux). <em>Ventajas:</em> <strong>Aislamiento total</strong>. Puedes romper, destruir y reinstalar Kali cien veces sin afectar tu sistema anfitrión. Es un <em>sandbox</em> perfecto, un campo de entrenamiento seguro. <strong>Comodidad</strong>: Puedes cambiar entre tu sistema habitual y Kali con un clic. <strong>Instantáneas</strong>: Puedes guardar el estado de tu VM antes de una prueba y volver atrás en segundos si algo sale mal.</li>
+</ul>
+
+<p><strong>Conclusión estratégica:</strong> Comienza con la virtualización. Es el estándar de la industria para aprender y para la mayoría de las labores de pentesting.</p>
+
+<h4>🛠️ Forjando tu Arsenal: La Instalación Guiada en VirtualBox</h4>
+
+<p>Usaremos <strong>VirtualBox</strong> por ser gratuito, robusto y multiplataforma. VMware Workstation es una alternativa excelente, pero los principios son idénticos.</p>
+
+<ol>
+  <li><strong>Paso 1: Descargar las Armas Oficiales.</strong> No uses fuentes no oficiales. Los enlaces directos son tu garantía de integridad.
+    <ul>
+      <li><a href="https://www.kali.org/get-kali/#kali-virtual-machines">Imagen de Máquina Virtual de Kali (Recomendado para principiantes)</a>: Ya viene instalada, solo hay que importarla. ¡La forma más rápida!</li>
+      <li><a href="https://www.kali.org/get-kali/#kali-platforms">Imagen ISO de Kali Linux</a>: Para una instalación desde cero, la que haremos en esta guía.</li>
+      <li><a href="https://www.virtualbox.org/wiki/Downloads">Oracle VM VirtualBox</a>: Descarga e instala la versión para tu sistema operativo.</li>
+    </ul>
+  </li>
+  <li><strong>Paso 2: Crear la Máquina Virtual.</strong> Abre VirtualBox y haz clic en "Nueva".
+    <ul>
+      <li><strong>Nombre:</strong> Kali Linux (para que sepas qué es).</li>
+      <li><strong>Tipo:</strong> Linux.</li>
+      <li><strong>Versión:</strong> Debian (64-bit).</li>
+      <li><strong>RAM:</strong> Asigna <strong>4096 MB (4GB)</strong> o más. Kali, con sus herramientas, es exigente. Menos de 2GB será una experiencia frustrante.</li>
+      <li><strong>Disco Duro:</strong> "Crear un disco duro virtual ahora". Tipo: <strong>VHD</strong> y <strong>Dinámicamente asignado</strong>. Tamaño: <strong>40 GB</strong> como mínimo. Este espacio no se ocupará de inmediato, pero Kali y las herramientas que instales lo necesitarán.</li>
+    </ul>
+  </li>
+  <li><strong>Paso 3: Configurar el Hardware Virtual.</strong> Selecciona tu VM y ve a "Configuración".
+    <ul>
+      <li><strong>Sistema > Procesador:</strong> Asigna al menos 2 CPUs.</li>
+      <li><strong>Almacenamiento:</strong> En el árbol de "Dispositivos de almacenamiento", haz clic en el icono del disco vacío y selecciona "Elegir un archivo de disco óptico virtual". Apunta a la ISO de Kali que descargaste.</li>
+      <li><strong>Red:</strong> Configúrala en modo <strong>"Adaptador Puente"</strong>. Esto le dará a tu VM una propia dirección IP en tu red local, como si fuera otro ordenador físico, esencial para escanear y atacar objetivos en tu laboratorio.</li>
+    </ul>
+  </li>
+  <li><strong>Paso 4: El Ritual de Instalación.</strong> Inicia la VM. Arrancará desde la ISO. Selecciona <strong>"Graphical Install"</strong> y sigue el asistente. Las opciones más importantes:
+    <ul>
+      <li><strong>Idioma y Ubicación:</strong> Los que prefieras.</li>
+      <li><strong>Configuración de Red:</strong> Puedes aceptar el hostname por defecto (kali).</li>
+      <li><strong>Configuración de Usuarios:</strong> <strong>¡Crea un usuario no-root!</strong> Te pedirá una contraseña para <code>root</code> (el superadministrador) y luego te pedirá crear un usuario normal. Es una práctica de seguridad fundamental trabajar siempre como usuario normal y escalar privilegios con <code>sudo</code> cuando sea necesario.</li>
+      <li><strong>Particionado de Discos:</strong> Para empezar, elige <strong>"Guiado - utilizar todo el disco"</strong>. Es la opción más simple y segura.</li>
+    </ul>
+  </li>
+</ol>
+
+<p>Una vez finalizado, reinicia la VM, desconecta la ISO desde la configuración de almacenamiento y ¡listo! Tu entorno de guerra está activo.</p>
+
+<h4>🧪 Post-Instalación: Consagrando tu Entorno</h4>
+
+<p>La instalación por defecto es un buen comienzo, pero un profesional afila sus herramientas. Abre una terminal y ejecuta estos comandos sagrados:</p>
+
+<pre><code># 1. Actualizar la lista de paquetes y el sistema a la última versión.
+# Esto es CRÍTICO para parchear vulnerabilidades.
+sudo apt update && sudo apt full-upgrade -y
+
+# 2. Instalar el conjunto de herramientas "large".
+# La instalación por defecto ("kali-linux-default") es básica.
+# "kali-linux-large" incluye cientos de herramientas adicionales para
+# forensia, ingeniería inversa, etc.
+sudo apt install -y kali-linux-large
+
+# 3. Instalar headers de Linux y herramientas de compilación.
+# Necesario para que ciertos módulos (como drivers de Wi-Fi) funcionen.
+sudo apt install -y linux-headers-$(uname -r) build-essential</code></pre>
+
+<h4>🤔 Resolviendo Dudas Existenciales del Principiante</h4>
+
+<ul>
+  <li><strong>¿Es ilegal tener Kali Linux?</strong> <em>No.</em> Es tan legal como tener un juego de cerrajería. La ilegalidad reside en usarlo para acceder a sistemas sin permiso. Tu laboratorio local es tu reino, allí todo es legal.</li>
+  <li><strong>¿Por qué no puedo hacer <code>sudo</code> con mi usuario?</strong> Después de la instalación, tu usuario no está en el grupo <code>sudo</code> por defecto. Añádelo con: <code>sudo usermod -aG sudo tu_usuario</code> y reinicia la sesión.</li>
+  <li><strong>¿Kali es lento en mi VM?</strong> Asegúrate de tener suficientes RAM y CPU asignadas. Además, instala las <strong>"Guest Additions"</strong> de VirtualBox (en el menú "Dispositivos" de la VM) para mejorar el rendimiento y la integración gráfica.</li>
+</ul>
+
+<hr>
+
+<p>Has completado más que una instalación. Has construido una base sólida, un entorno aislado y profesional para comenzar tu ascenso. Has comprendido el <em>porqué</em> detrás de cada decisión. El campo de batalla está listo. Ahora, el verdadero viaje comienza.</p>
+
+<p>¿Estás listo para aprender a hablar el idioma de los dioses en el <strong>Módulo 2: La Terminal: Tu Nueva Lengua</strong>? 🚀</p>
