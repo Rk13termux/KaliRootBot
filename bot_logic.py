@@ -15,7 +15,13 @@ logger = logging.getLogger(__name__)
 MAIN_MENU = [
     [KeyboardButton("🚀 Mi Ruta de Aprendizaje"), KeyboardButton("🧪 Laboratorios Prácticos")],
     [KeyboardButton("🛒 Tienda / Recargas"), KeyboardButton("⚙️ Mi Cuenta")],
-    [KeyboardButton("👥 Comunidad"), KeyboardButton("📩 Contactar Soporte")]
+    [KeyboardButton("👥 Comunidad"), KeyboardButton("🛠️ Tools")]
+]
+
+TOOLS_MENU = [
+    [KeyboardButton("🌐 Web Tools"), KeyboardButton("📄 PDF Tools")],
+    [KeyboardButton("📦 Repositorios"), KeyboardButton("📜 Scripts")],
+    [KeyboardButton("🔙 Volver al Menú Principal")]
 ]
 
 LEARNING_MENU = [
@@ -124,6 +130,59 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "🔙 Volver al Menú Principal":
         # No cleaning here (Generic back)
         await send_menu(update, "Regresando al cuartel general...", MAIN_MENU)
+        return
+
+    # --- TOOLS MENU ---
+    if text == "🛠️ Tools":
+        await send_menu(update, "🛠️ <b>ARSENAL DE HERRAMIENTAS</b>\n\nSelecciona una categoría para acceder a las utilidades:", TOOLS_MENU)
+        return
+
+    if text == "🌐 Web Tools":
+        msg = (
+            "🌐 <b>WEB TOOLS</b>\n\n"
+            "Herramientas para análisis y reconocimiento web:\n"
+            "• <b>Whois Lookup</b>: Información de dominios\n"
+            "• <b>DNS Enumeration</b>: Mapeo de subdominios\n"
+            "• <b>HTTP Headers</b>: Análisis de cabeceras\n\n"
+            "<i>(Próximamente más herramientas interactivas)</i>"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        return
+
+    if text == "📄 PDF Tools":
+        msg = (
+            "📄 <b>PDF TOOLS</b>\n\n"
+            "Utilidades para manipulación de documentos:\n"
+            "• <b>Metadatos</b>: Extracción de info oculta\n"
+            "• <b>Crack PDF</b>: Fuerza bruta de contraseñas\n"
+            "• <b>Watermark</b>: Añadir marcas de agua\n\n"
+            "<i>(Sube un archivo PDF para analizarlo - Próximamente)</i>"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        return
+
+    if text == "📦 Repositorios":
+        msg = (
+            "📦 <b>REPOSITORIOS ESENCIALES</b>\n\n"
+            "Colección curada de repositorios de GitHub para hackers:\n\n"
+            "🔹 <a href='https://github.com/swisskyrepo/PayloadsAllTheThings'>PayloadsAllTheThings</a>\n"
+            "🔹 <a href='https://github.com/danielmiessler/SecLists'>SecLists</a>\n"
+            "🔹 <a href='https://github.com/carlospolop/PEASS-ng'>PEASS-ng (Privilege Escalation)</a>\n"
+            "🔹 <a href='https://github.com/sqlmapproject/sqlmap'>SQLMap</a>"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        return
+
+    if text == "📜 Scripts":
+        msg = (
+            "📜 <b>SCRIPTS DE AUTOMATIZACIÓN</b>\n\n"
+            "Scripts útiles para tareas comunes:\n"
+            "• <b>Nmap Automator</b>: Escaneo rápido\n"
+            "• <b>AutoRecon</b>: Reconocimiento masivo\n"
+            "• <b>LinEnum</b>: Enumeración local Linux\n\n"
+            "<i>(Próximamente descarga directa de scripts)</i>"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return
 
     # 1. Ruta de Aprendizaje
@@ -932,7 +991,51 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
         return
 
-    # Eliminados handlers antiguos de Desafíos y Gestionar Suscripción
+    # Handler: Gestionar Suscripción
+    if text == "🔑 Gestionar Suscripción":
+        is_sub = await is_user_subscribed(user_id)
+        
+        if is_sub:
+            # Usuario Suscrito
+            msg = (
+                "✅ <b>SUSCRIPCIÓN ACTIVA</b>\n\n"
+                "👤 <b>Estado:</b> Premium Member 💎\n"
+                "📅 <b>Renovación:</b> Automática (Mensual)\n"
+                "✨ <b>Beneficios Activos:</b>\n"
+                "• Acceso Total a Laboratorios\n"
+                "• Certificados Habilitados\n"
+                "• Bonus de Créditos IA\n\n"
+                "<i>Gracias por apoyar el proyecto y tu educación.</i>"
+            )
+            await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        else:
+            # Usuario NO Suscrito
+            from nowpayments_handler import create_payment_invoice
+            from database_manager import set_subscription_pending
+            from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            # Generar factura para facilitar la suscripción inmediata
+            inv_sub = create_payment_invoice(10.0, user_id, "subscription")
+            
+            msg = (
+                "❌ <b>SUSCRIPCIÓN INACTIVA</b>\n\n"
+                "Actualmente estás en el plan <b>Gratuito</b>.\n\n"
+                "⚠️ <b>Limitaciones actuales:</b>\n"
+                "• Acceso restringido a laboratorios avanzados\n"
+                "• Sin certificados oficiales\n"
+                "• Créditos de IA limitados\n\n"
+                "🚀 <b>¡Sube de nivel hoy mismo!</b>"
+            )
+            
+            keyboard = []
+            if inv_sub:
+                await set_subscription_pending(user_id, inv_sub.get('invoice_id'))
+                keyboard.append([InlineKeyboardButton("💎 Activar Premium ($10/mes)", url=inv_sub['invoice_url'])])
+            else:
+                keyboard.append([InlineKeyboardButton("📞 Contactar Soporte", url="https://t.me/KaliRootSupport")])
+                
+            await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+        return
 
     if text == "📈 Estadísticas Personales":
         from database_manager import get_user_profile, get_user_completed_modules
@@ -998,22 +1101,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• $10 USD = 400 Créditos + Descuento 5%\n"
             "• $20 USD = 850 Créditos + Descuento 10%\n\n"
             "🎁 <b>BONUS:</b> Al suscribirte Premium ($10/mes) obtienes <b>+250 créditos GRATIS</b> además de acceso total.\n\n"
+            "👇 <b>Elige tu opción:</b>"
         )
         
         keyboard = []
         if invoice and invoice.get('invoice_url'):
-            msg += "👇 <b>Elige tu opción:</b>"
             keyboard.append([InlineKeyboardButton("💳 Recargar 200 Créditos ($5)", url=invoice['invoice_url'])])
             keyboard.append([InlineKeyboardButton("🚀 Mejor Oferta: Premium + 250 Créditos ($10)", url=f"https://t.me/{update.effective_chat.username}")])
         else:
-            # If invoice generation failed
-            msg += (
-                "⚠️ <b>Sistema de pagos temporalmente no disponible.</b>\n\n"
-                "Por favor contacta a soporte para activar créditos manualmente:\n"
-                "👉 /soporta o usa el comando /suscribirse"
-            )
+            # Fallback
+            keyboard.append([InlineKeyboardButton("📞 Contactar Soporte", url="https://t.me/KaliRootSupport")])
         
-        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
         return
 
     if credits == 0 and is_sub:
@@ -1031,16 +1130,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• $5 = 200 Créditos\n"
             "• $10 = 400 Créditos\n"
             "• $20 = 850 Créditos\n\n"
+            "👇 <b>Selecciona tu paquete:</b>"
         )
         
         keyboard = []
         if invoice and invoice.get('invoice_url'):
-            msg += "👇 <b>Recarga ahora:</b>"
             keyboard.append([InlineKeyboardButton("💳 Recargar $5 (200 Créditos)", url=invoice['invoice_url'])])
         else:
-            msg += "⚠️ <b>Sistema de pagos no disponible. Contacta soporte.</b>"
+            # Fallback button if payment system fails
+            keyboard.append([InlineKeyboardButton("📞 Contactar Soporte para Recarga", url="https://t.me/KaliRootSupport")])
         
-        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
         return
 
     # Send typing action (animation in header) instead of text message
