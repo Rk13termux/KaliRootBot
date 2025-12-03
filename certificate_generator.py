@@ -16,15 +16,16 @@ def ensure_assets_dir():
 def create_fallback_template():
     """Creates a simple placeholder certificate template if none exists."""
     ensure_assets_dir()
-    if not os.path.exists(CERT_TEMPLATE_PATH):
-        # Create a 800x600 dark image with gold border
-        img = Image.new('RGB', (800, 600), color=(20, 20, 20))
-        draw = ImageDraw.Draw(img)
-        # Draw border
-        draw.rectangle([10, 10, 790, 590], outline=(218, 165, 32), width=5)
-        # Save
-        img.save(CERT_TEMPLATE_PATH)
-        logger.info("Created fallback certificate template.")
+    # Always recreate to ensure new dimensions/colors apply if file exists but is old
+    # Create a 1900x900 dark image with Telegram Blue border
+    telegram_blue = (0, 136, 204)
+    img = Image.new('RGB', (1900, 900), color=(20, 20, 20))
+    draw = ImageDraw.Draw(img)
+    # Draw border
+    draw.rectangle([20, 20, 1880, 880], outline=telegram_blue, width=10)
+    # Save
+    img.save(CERT_TEMPLATE_PATH)
+    logger.info("Created/Updated fallback certificate template.")
 
 def generate_certificate(user_name: str, user_id: int, module_title: str) -> str:
     """
@@ -32,6 +33,7 @@ def generate_certificate(user_name: str, user_id: int, module_title: str) -> str
     Returns the path to the generated image.
     """
     try:
+        # Force recreation of template to ensure correct size/color
         create_fallback_template()
         
         img = Image.open(CERT_TEMPLATE_PATH)
@@ -40,42 +42,45 @@ def generate_certificate(user_name: str, user_id: int, module_title: str) -> str
         
         # Colors
         text_color = (255, 255, 255)
-        gold_color = (218, 165, 32)
+        telegram_blue = (0, 136, 204) # Telegram Blue
         
-        # Load fonts (try to load a system font or default)
+        # Load fonts (Scaled up for 1900x900)
         try:
             # Try to load a ttf if available, else default
-            title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
-            name_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 60)
-            text_font = ImageFont.truetype("DejaVuSans.ttf", 20)
+            title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 80) # Bigger
+            name_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 100) # Bigger
+            text_font = ImageFont.truetype("DejaVuSans.ttf", 40) # Bigger
+            module_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 70) # Bigger
         except OSError:
             # Fallback to default PIL font (very small, but works)
             title_font = ImageFont.load_default()
             name_font = ImageFont.load_default()
             text_font = ImageFont.load_default()
+            module_font = ImageFont.load_default()
 
-        # Draw Content
+        # Draw Content - Adjusted for 1900x900
+        
         # 1. Title
-        draw.text((width/2, 100), "CERTIFICADO DE FINALIZACIÓN", font=title_font, fill=gold_color, anchor="mm")
+        draw.text((width/2, 150), "CERTIFICADO DE FINALIZACIÓN", font=title_font, fill=telegram_blue, anchor="mm")
         
         # 2. "Awarded to"
-        draw.text((width/2, 200), "Otorgado a:", font=text_font, fill=text_color, anchor="mm")
+        draw.text((width/2, 300), "Otorgado a:", font=text_font, fill=text_color, anchor="mm")
         
         # 3. User Name
-        draw.text((width/2, 260), user_name.upper(), font=name_font, fill=text_color, anchor="mm")
+        draw.text((width/2, 400), user_name.upper(), font=name_font, fill=text_color, anchor="mm")
         
         # 4. User ID
-        draw.text((width/2, 310), f"ID: {user_id}", font=text_font, fill=(150, 150, 150), anchor="mm")
+        draw.text((width/2, 480), f"ID: {user_id}", font=text_font, fill=(150, 150, 150), anchor="mm")
         
         # 5. "For completing"
-        draw.text((width/2, 380), "Por completar exitosamente el módulo:", font=text_font, fill=text_color, anchor="mm")
+        draw.text((width/2, 600), "Por completar exitosamente el módulo:", font=text_font, fill=text_color, anchor="mm")
         
         # 6. Module Title
-        draw.text((width/2, 430), module_title, font=title_font, fill=gold_color, anchor="mm")
+        draw.text((width/2, 680), module_title, font=module_font, fill=telegram_blue, anchor="mm")
         
         # 7. Date
         date_str = datetime.now().strftime("%d/%m/%Y")
-        draw.text((width/2, 530), f"Fecha: {date_str}", font=text_font, fill=text_color, anchor="mm")
+        draw.text((width/2, 800), f"Fecha: {date_str}", font=text_font, fill=text_color, anchor="mm")
         
         # Save output
         output_filename = f"cert_{user_id}_{datetime.now().timestamp()}.png"

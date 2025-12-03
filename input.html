@@ -1,90 +1,104 @@
-<h3>🌱 Módulo 1: El Despertar: Instalando Kali Linux 🔧</h3>
+<p>Ya puedes navegar el sistema, pero te has topado con un muro invisible: <code>Permission denied</code>. Ese mensaje es la manifestación del modelo de seguridad de Linux, una fortaleza diseñada para proteger el sistema de sí mismo y de ti. Para trascender, necesitas comprender la anatomía del poder. Este módulo no solo te enseñará a obtener privilegios de administrador; te enseñará a respetarlos, a gestionarlos y a convertirte en el verdadero amo de tu dominio. El poder absoluto no solo se toma, se comprende.</p>
 
-<p>¡Bienvenido, neófito, al umbral de un nuevo dominio! 🐉 Este no es simplemente un tutorial de instalación; es tu iniciación. Kali Linux no es un sistema operativo más, es un ecosistema, un arsenal digital forjado para la ofensiva y la defensa en el ciberespacio. Este módulo te guiará en la construcción de tu primer entorno de guerra virtual, explicando la teoría y la estrategia detrás de cada clic y cada comando. Prepárate para despertar.</p>
+<h4>🧠 La Divinidad del Sistema: El Usuario Root</h4>
 
-<h4>🧠 La Filosofía de Kali: Más Allá de un Simple SO</h4>
+<p>En el panteón de Linux, existe una sola deidad: <strong>root</strong>. El usuario <code>root</code> (también conocido como superusuario) no es como un administrador de Windows. <code>root</code> es el usuario con ID 0. Es la entidad que el sistema operativo no cuestiona. Cuando <code>root</code> ordena, el sistema obedece sin dudar. Puede borrar cualquier archivo (incluyendo los que el sistema necesita para funcionar), modificar la configuración de la red, apagar la máquina, y en general, hacer <strong>absolutamente cualquier cosa</strong>.</p>
 
-<p>Antes de descargar un solo byte, debes comprender qué es Kali. No está diseñado para navegar por redes sociales ni para escribir tu tarea de historia. Kali es una distribución basada en Debian, meticulosamente curada para ser la plataforma estándar en pruebas de penetración (pentesting) y auditoría de seguridad. Su filosofía se centra en proporcionar un entorno coherente y estable con cientos de herramientas preinstaladas, listas para ser desatadas. Usar Kali implica una responsabilidad: <strong>el poder que otorga debe ser usado con ética y exclusivamente en entornos donde tienes permiso explícito</strong>. Recordar esto te mantendrá del lado correcto de la ley y te convertirá en un profesional, no en un delincuente.</p>
+<p><strong>La advertencia es solemne:</strong> Iniciar sesión y operar constantemente como <code>root</code> es como conducir un coche de Fórmula 1 por el centro de la ciudad a toda velocidad. Un solo error, un comando mal escrito, y puedes destruir el sistema por completo. La filosofía profesional dicta: <strong>Nunca uses más poder del necesario</strong>. Esto nos lleva al puente hacia la divinidad.</p>
 
-<h4>⚖️ La Encrucijada del Guerrero: Virtualización vs. Instalación Nativa</h4>
+<h4>🛡️ El Puente Seguro: El Comando `sudo`</h4>
 
-<p>Te enfrentarás a tu primera decisión estratégica crucial. ¿Instalar Kali directamente en tu hardware (bare metal) o virtualizarlo? La respuesta para un profesional en formación es inequívoca: <strong>virtualiza</strong>.</p>
+<p><code>sudo</code> (superuser do) es la herramienta moderna y segura para elevar temporalmente tus privilegios. En lugar de iniciar una sesión completa como <code>root</code>, <code>sudo</code> te permite ejecutar <strong>un único comando</strong> con los poderes de <code>root</code>. Es como pedir prestado el martillo del dios para clavar un clavo, en lugar de tomar posesión de su taller entero.</p>
+
+<p>Cuando ejecutas un comando con <code>sudo</code>, el sistema te pedirá tu <strong>propia contraseña de usuario</strong> (no la de <code>root</code>). Por defecto, recuerda tu autorización durante 15 minutos, evitando que tengas que escribirla constantemente. Este es el estándar de oro en la administración de sistemas y la forma en que deberás operar el 99% de las veces.</p>
+
+<pre><code># Instalar un programa sin ser root
+apt install nmap
+# -> Saldrá: E: No se pudo abrir el fichero de bloqueo '/var/lib/dpkg/lock-frontend' - Permission denied
+
+# Instalar un programa pidiendo prestado el poder de root
+sudo apt install nmap
+# -> Te pedirá tu contraseña, y luego procederá con la instalación.</code></pre>
+
+<h4>🔐 La Anatomía del Poder: Lectura, Escritura y Ejecución (rwx)</h4>
+
+<p>Los permisos en Linux no son un simple "sí" o "no". Son granulares. Cada archivo y directorio tiene tres tipos de permisos para tres tipos de actores. Esto se representa con la notación <code>rwx</code>.</p>
 
 <ul>
-  <li><strong>Instalación Nativa (Bare Metal):</strong> Kali se convierte en tu sistema operativo principal. <em>Desventajas:</em> Altera tu sistema actual, requiere drivers específicos, y cualquier error puede dejar tu PC inutilizable. Es una opción para expertos que necesitan máximo rendimiento y acceso directo al hardware (ej. para ataques Wi-Fi con tarjetas específicas).</li>
-  <li><strong>Virtualización (Máquina Virtual):</strong> Kali corre como una aplicación dentro de tu sistema principal (Windows, macOS, Linux). <em>Ventajas:</em> <strong>Aislamiento total</strong>. Puedes romper, destruir y reinstalar Kali cien veces sin afectar tu sistema anfitrión. Es un <em>sandbox</em> perfecto, un campo de entrenamiento seguro. <strong>Comodidad</strong>: Puedes cambiar entre tu sistema habitual y Kali con un clic. <strong>Instantáneas</strong>: Puedes guardar el estado de tu VM antes de una prueba y volver atrás en segundos si algo sale mal.</li>
+  <li><strong>Actores:</strong>
+    <ul>
+      <li><strong>u</strong>ser (Propietario): El usuario que creó el archivo.</li>
+      <li><strong>g</strong>roup (Grupo): El grupo al que pertenece el archivo. Varios usuarios pueden estar en el mismo grupo para compartir permisos.</li>
+      <li><strong>o</strong>thers (Otros): Cualquier otro usuario que no sea el propietario ni esté en el grupo.</li>
+    </ul>
+  </li>
+  <li><strong>Permisos:</strong>
+    <ul>
+      <li><strong>r</strong>ead (Lectura): Permite ver el contenido de un archivo o listar los archivos de un directorio.</li>
+      <li><strong>w</strong>rite (Escritura): Permite modificar un archivo o crear/borrar archivos <strong>dentro</strong> de un directorio.</li>
+      <li><strong>x</strong>ecute (Ejecución): Permite ejecutar un archivo (si es un programa o script) o <strong>entrar</strong> en un directorio (hacer <code>cd</code> sobre él).</li>
+    </ul>
+  </li>
 </ul>
 
-<p><strong>Conclusión estratégica:</strong> Comienza con la virtualización. Es el estándar de la industria para aprender y para la mayoría de las labores de pentesting.</p>
+<p>Puedes ver estos permisos con <code>ls -l</code>:</p>
 
-<h4>🛠️ Forjando tu Arsenal: La Instalación Guiada en VirtualBox</h4>
+<pre><code>$ ls -l mi_script.sh
+-rwxr-xr-- 1 kali kali 120 Dec 3 10:30 mi_script.sh</code></pre>
 
-<p>Usaremos <strong>VirtualBox</strong> por ser gratuito, robusto y multiplataforma. VMware Workstation es una alternativa excelente, pero los principios son idénticos.</p>
+<p>Desglosemos <code>-rwxr-xr--</code>:</p>
+<ul>
+  <li>El primer <code>-</code> indica que es un archivo (sería <code>d</code> para un directorio).</li>
+  <li><strong>rwx</strong>: El propietario (<code>kali</code>) puede Leer, Escribir y Ejecutar.</li>
+  <li><strong>r-x</strong>: Los usuarios del grupo (<code>kali</code>) pueden Leer y Ejecutar, pero no modificar.</li>
+  <li><strong>r--</strong>: Los demás usuarios solo pueden Leer el archivo.</li>
+</ul>
 
-<ol>
-  <li><strong>Paso 1: Descargar las Armas Oficiales.</strong> No uses fuentes no oficiales. Los enlaces directos son tu garantía de integridad.
-    <ul>
-      <li><a href="https://www.kali.org/get-kali/#kali-virtual-machines">Imagen de Máquina Virtual de Kali (Recomendado para principiantes)</a>: Ya viene instalada, solo hay que importarla. ¡La forma más rápida!</li>
-      <li><a href="https://www.kali.org/get-kali/#kali-platforms">Imagen ISO de Kali Linux</a>: Para una instalación desde cero, la que haremos en esta guía.</li>
-      <li><a href="https://www.virtualbox.org/wiki/Downloads">Oracle VM VirtualBox</a>: Descarga e instala la versión para tu sistema operativo.</li>
-    </ul>
-  </li>
-  <li><strong>Paso 2: Crear la Máquina Virtual.</strong> Abre VirtualBox y haz clic en "Nueva".
-    <ul>
-      <li><strong>Nombre:</strong> Kali Linux (para que sepas qué es).</li>
-      <li><strong>Tipo:</strong> Linux.</li>
-      <li><strong>Versión:</strong> Debian (64-bit).</li>
-      <li><strong>RAM:</strong> Asigna <strong>4096 MB (4GB)</strong> o más. Kali, con sus herramientas, es exigente. Menos de 2GB será una experiencia frustrante.</li>
-      <li><strong>Disco Duro:</strong> "Crear un disco duro virtual ahora". Tipo: <strong>VHD</strong> y <strong>Dinámicamente asignado</strong>. Tamaño: <strong>40 GB</strong> como mínimo. Este espacio no se ocupará de inmediato, pero Kali y las herramientas que instales lo necesitarán.</li>
-    </ul>
-  </li>
-  <li><strong>Paso 3: Configurar el Hardware Virtual.</strong> Selecciona tu VM y ve a "Configuración".
-    <ul>
-      <li><strong>Sistema > Procesador:</strong> Asigna al menos 2 CPUs.</li>
-      <li><strong>Almacenamiento:</strong> En el árbol de "Dispositivos de almacenamiento", haz clic en el icono del disco vacío y selecciona "Elegir un archivo de disco óptico virtual". Apunta a la ISO de Kali que descargaste.</li>
-      <li><strong>Red:</strong> Configúrala en modo <strong>"Adaptador Puente"</strong>. Esto le dará a tu VM una propia dirección IP en tu red local, como si fuera otro ordenador físico, esencial para escanear y atacar objetivos en tu laboratorio.</li>
-    </ul>
-  </li>
-  <li><strong>Paso 4: El Ritual de Instalación.</strong> Inicia la VM. Arrancará desde la ISO. Selecciona <strong>"Graphical Install"</strong> y sigue el asistente. Las opciones más importantes:
-    <ul>
-      <li><strong>Idioma y Ubicación:</strong> Los que prefieras.</li>
-      <li><strong>Configuración de Red:</strong> Puedes aceptar el hostname por defecto (kali).</li>
-      <li><strong>Configuración de Usuarios:</strong> <strong>¡Crea un usuario no-root!</strong> Te pedirá una contraseña para <code>root</code> (el superadministrador) y luego te pedirá crear un usuario normal. Es una práctica de seguridad fundamental trabajar siempre como usuario normal y escalar privilegios con <code>sudo</code> cuando sea necesario.</li>
-      <li><strong>Particionado de Discos:</strong> Para empezar, elige <strong>"Guiado - utilizar todo el disco"</strong>. Es la opción más simple y segura.</li>
-    </ul>
-  </li>
-</ol>
+<h4>🔢 El Lenguaje de los Dioses: Notación Octal y `chmod`</h4>
 
-<p>Una vez finalizado, reinicia la VM, desconecta la ISO desde la configuración de almacenamiento y ¡listo! Tu entorno de guerra está activo.</p>
-
-<h4>🧪 Post-Instalación: Consagrando tu Entorno</h4>
-
-<p>La instalación por defecto es un buen comienzo, pero un profesional afila sus herramientas. Abre una terminal y ejecuta estos comandos sagrados:</p>
-
-<pre><code># 1. Actualizar la lista de paquetes y el sistema a la última versión.
-# Esto es CRÍTICO para parchear vulnerabilidades.
-sudo apt update && sudo apt full-upgrade -y
-
-# 2. Instalar el conjunto de herramientas "large".
-# La instalación por defecto ("kali-linux-default") es básica.
-# "kali-linux-large" incluye cientos de herramientas adicionales para
-# forensia, ingeniería inversa, etc.
-sudo apt install -y kali-linux-large
-
-# 3. Instalar headers de Linux y herramientas de compilación.
-# Necesario para que ciertos módulos (como drivers de Wi-Fi) funcionen.
-sudo apt install -y linux-headers-$(uname -r) build-essential</code></pre>
-
-<h4>🤔 Resolviendo Dudas Existenciales del Principiante</h4>
+<p>Cambiar permisos con letras (`chmod u+x archivo`) es útil, pero los profesionales usan la notación numérica (octal) por su rapidez y precisión. Se basa en una simple suma:</p>
 
 <ul>
-  <li><strong>¿Es ilegal tener Kali Linux?</strong> <em>No.</em> Es tan legal como tener un juego de cerrajería. La ilegalidad reside en usarlo para acceder a sistemas sin permiso. Tu laboratorio local es tu reino, allí todo es legal.</li>
-  <li><strong>¿Por qué no puedo hacer <code>sudo</code> con mi usuario?</strong> Después de la instalación, tu usuario no está en el grupo <code>sudo</code> por defecto. Añádelo con: <code>sudo usermod -aG sudo tu_usuario</code> y reinicia la sesión.</li>
-  <li><strong>¿Kali es lento en mi VM?</strong> Asegúrate de tener suficientes RAM y CPU asignadas. Además, instala las <strong>"Guest Additions"</strong> de VirtualBox (en el menú "Dispositivos" de la VM) para mejorar el rendimiento y la integración gráfica.</li>
+  <li><strong>Lectura (r)</strong> = 4</li>
+  <li><strong>Escritura (w)</strong> = 2</li>
+  <li><strong>Ejecución (x)</strong> = 1</li>
+</ul>
+
+<p>Así, los permisos se combinan:
+<code>rwx</code> = 4 + 2 + 1 = <strong>7</strong>
+<code>r-x</code> = 4 + 0 + 1 = <strong>5</strong>
+<code>r--</strong> = 4 + 0 + 0 = <strong>4</strong></p>
+
+<p>El comando <code>chmod</code> (change mode) usa un número de tres dígitos: <strong>Propietario | Grupo | Otros</strong>.</p>
+
+<p><strong>Ejemplos prácticos de un pentester:</strong></p>
+
+<pre><code># Descargas un script de exploit, pero no es ejecutable.
+ $ ls -l exploit.py
+-rw-r--r-- 1 kali kali 5120 Dec 3 10:45 exploit.py
+
+# Le das permiso de ejecución a todos (755 = rwxr-xr-x)
+# 7 (rwx) para ti, 5 (r-x) para el grupo y otros.
+ $ chmod 755 exploit.py
+ $ ls -l exploit.py
+-rwxr-xr-x 1 kali kali 5120 Dec 3 10:45 exploit.py
+
+# Creas un archivo de configuración sensible que solo tú debes leer y modificar.
+# 600 (rw-------) = solo el propietario puede leer/escribir.
+ $ chmod 600 claves_secretas.txt</code></pre>
+
+<p><strong>Advertencia sobre <code>chmod 777</code>:</strong> Este comando da todos los permisos a todos. Es como dejar las puertas de tu casa abiertas con un cartel que dice "entra y toma lo que quieras". Es una solución rápida y sucia para problemas de permisos, pero una <strong>práctica de seguridad pésima y peligrosa</strong>. Evítala a menos que sea en un directorio de prueba temporal y aislado.</p>
+
+<h4>🤔 Dudas Frente al Trono</h4>
+
+<ul>
+  <li><strong>¿Cómo cambio el propietario de un archivo?</strong> Usa <code>chown</code> (change owner). Por ejemplo, <code>sudo chown www-data:www-data /var/www/html/index.html</code> hace que el usuario y grupo <code>www-data</code> (el servidor web) sea el dueño del archivo.</li>
+  <li><strong>¿Cuál es la diferencia entre <code>sudo su</code> y <code>sudo -i</code>?</strong> Ambos te dan una shell de root, pero <code>sudo -i</code> (o <code>sudo su -</code>) es más limpio. Simula un login completo de root, cargando sus variables de entorno. <code>sudo su</code> simplemente te cambia de usuario, manteniendo tu entorno anterior. <code>sudo -i</code> es la preferida profesionalmente.</li>
+  <li><strong>¿Por qué a veces <code>sudo</code> no me funciona?</strong> Puede que tu usuario no esté en el grupo <code>sudo</code>. Un administrador debe añadirte con el comando <code>sudo usermod -aG sudo tu_usuario</code>. En tu instalación de Kali, tu usuario debería estar configurado por defecto.</li>
 </ul>
 
 <hr>
 
-<p>Has completado más que una instalación. Has construido una base sólida, un entorno aislado y profesional para comenzar tu ascenso. Has comprendido el <em>porqué</em> detrás de cada decisión. El campo de batalla está listo. Ahora, el verdadero viaje comienza.</p>
+<p>Has desbloqueado el primer nivel de control del sistema. Ya no eres un simple visitante; eres un administrador. Entiendes que los permisos son las cerraduras y <code>sudo</code> es la llave maestra. Usas este poder con precisión y responsabilidad. Has ganado el respeto de la máquina.</p>
 
-<p>¿Estás listo para aprender a hablar el idioma de los dioses en el <strong>Módulo 2: La Terminal: Tu Nueva Lengua</strong>? 🚀</p>
+<p>¿Estás listo para explorar el vasto territorio que ahora controlas en el <strong>Módulo 4: El Mapa del Tesoro: Filesystem</strong>? 🗺️</p>

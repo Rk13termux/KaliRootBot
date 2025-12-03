@@ -21,7 +21,15 @@ def run():
         logger.error("Puedes probar el token: curl https://api.telegram.org/bot<token>/getMe")
         sys.exit(1)
 
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .read_timeout(120)
+        .write_timeout(120)
+        .connect_timeout(120)
+        .pool_timeout(120)
+        .build()
+    )
     # If a webhook is configured this may cause a Conflict error with getUpdates.
     # If DELETE_WEBHOOK_ON_POLLING is True, delete any configured webhook before polling.
     from config import DELETE_WEBHOOK_ON_POLLING

@@ -21,8 +21,9 @@ MAIN_MENU = [
 TOOLS_MENU = [
     [KeyboardButton("🌐 Web Tools"), KeyboardButton("📄 PDF Tools")],
     [KeyboardButton("📦 Repositorios"), KeyboardButton("📜 Scripts")],
-    [KeyboardButton("🔙 Volver al Menú Principal")]
+    [KeyboardButton("📱 Termux"), KeyboardButton("🔙 Volver al Menú Principal")]
 ]
+
 
 LEARNING_MENU = [
     [KeyboardButton("📚 Módulos"), KeyboardButton("📊 Mi Progreso")],
@@ -181,6 +182,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• <b>AutoRecon</b>: Reconocimiento masivo\n"
             "• <b>LinEnum</b>: Enumeración local Linux\n\n"
             "<i>(Próximamente descarga directa de scripts)</i>"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        return
+
+    if text == "📱 Termux":
+        msg = (
+            "📱 <b>TERMUX ELITE ZONE</b>\n\n"
+            "Bienvenido al arsenal de bolsillo. Aquí dominamos Android como un arma.\n\n"
+            "🔥 <b>RECURSOS ESENCIALES:</b>\n"
+            "• <b>Termux-API</b>: Controla hardware (cámara, GPS, SMS)\n"
+            "• <b>Proot-Distro</b>: Instala Kali/Ubuntu en Termux\n"
+            "• <b>Termux-Styling</b>: Personaliza tu terminal\n\n"
+            "💡 <i>Tip: Pídeme cualquier comando o script para Termux. Conozco la Wiki de memoria.</i>"
         )
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return
@@ -920,29 +934,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🔄 Cargando planes de créditos...", parse_mode=ParseMode.HTML)
         
         # Generar facturas
-        inv_starter = create_payment_invoice(5.0, user_id, "200_credits")
-        inv_pro = create_payment_invoice(10.0, user_id, "500_credits")
-        inv_elite = create_payment_invoice(20.0, user_id, "1200_credits")
+        inv_starter = create_payment_invoice(7.0, user_id, "400_credits")
+        inv_pro = create_payment_invoice(14.0, user_id, "900_credits")
+        inv_elite = create_payment_invoice(20.0, user_id, "1500_credits")
         
         msg = (
             "⚡ <b>RECARGA DE CRÉDITOS IA</b>\n\n"
             "Obtén potencia de cálculo para nuestra IA sin censura y herramientas avanzadas.\n\n"
             "📦 <b>PLANES DISPONIBLES:</b>\n\n"
             "🥉 <b>STARTER</b>\n"
-            "├ 200 Créditos\n"
-            "└ <b>$5.00 USD</b>\n\n"
-            "🥈 <b>HACKER PRO</b> (🔥 <i>Popular</i>)\n"
-            "├ 500 Créditos (+25% Extra)\n"
-            "└ <b>$10.00 USD</b>\n\n"
-            "🥇 <b>ELITE</b> (💎 <i>Mejor Valor</i>)\n"
-            "├ 1200 Créditos (+50% Extra)\n"
+            "├ 400 Créditos\n"
+            "└ <b>$7.00 USD</b>\n\n"
+            "🥈 <b>HACKER PRO</b> (+12% Extra)\n"
+            "├ 900 Créditos\n"
+            "└ <b>$14.00 USD</b>\n\n"
+            "🥇 <b>ELITE</b> (🔥 <b>OFERTA IRRESISTIBLE</b>)\n"
+            "├ <b>1500 Créditos</b> (Casi 4x el plan básico)\n"
             "└ <b>$20.00 USD</b>\n\n"
             "👇 <b>Toca el botón para pagar con Cripto (USDT):</b>"
         )
         
         keyboard = []
-        if inv_starter: keyboard.append([InlineKeyboardButton("🥉 Comprar Starter ($5)", url=inv_starter['invoice_url'])])
-        if inv_pro: keyboard.append([InlineKeyboardButton("🥈 Comprar Hacker Pro ($10)", url=inv_pro['invoice_url'])])
+        if inv_starter: keyboard.append([InlineKeyboardButton("🥉 Comprar Starter ($7)", url=inv_starter['invoice_url'])])
+        if inv_pro: keyboard.append([InlineKeyboardButton("🥈 Comprar Hacker Pro ($14)", url=inv_pro['invoice_url'])])
         if inv_elite: keyboard.append([InlineKeyboardButton("🥇 Comprar Elite ($20)", url=inv_elite['invoice_url'])])
         
         if not keyboard:
@@ -1084,9 +1098,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from nowpayments_handler import create_payment_invoice
         from telegram import InlineKeyboardMarkup, InlineKeyboardButton
         
-        # Generate invoice for $5 = 200 credits
-        amount = 5.0
-        invoice = create_payment_invoice(amount, user_id, description="200_credits")
+        # Generate invoice for $7 = 400 credits (Starter)
+        amount = 7.0
+        invoice = create_payment_invoice(amount, user_id, description="400_credits")
         
         msg = (
             "⚠️ <b>CRÉDITOS AGOTADOS: IA BLOQUEADA</b>\n\n"
@@ -1097,16 +1111,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Sin límites de contenido técnico\n"
             "• Mantenimiento de servidores de alto rendimiento\n\n"
             "💰 <b>RECARGA RÁPIDA:</b>\n"
-            "• $5 USD = 200 Créditos (1 crédito = $0.025)\n"
-            "• $10 USD = 400 Créditos + Descuento 5%\n"
-            "• $20 USD = 850 Créditos + Descuento 10%\n\n"
+            "• $7 USD = 400 Créditos\n"
+            "• $14 USD = 900 Créditos (+12% Extra)\n"
+            "• $20 USD = 1500 Créditos (🔥 Oferta Irresistible)\n\n"
             "🎁 <b>BONUS:</b> Al suscribirte Premium ($10/mes) obtienes <b>+250 créditos GRATIS</b> además de acceso total.\n\n"
             "👇 <b>Elige tu opción:</b>"
         )
         
         keyboard = []
         if invoice and invoice.get('invoice_url'):
-            keyboard.append([InlineKeyboardButton("💳 Recargar 200 Créditos ($5)", url=invoice['invoice_url'])])
+            keyboard.append([InlineKeyboardButton("💳 Recargar 400 Créditos ($7)", url=invoice['invoice_url'])])
             keyboard.append([InlineKeyboardButton("🚀 Mejor Oferta: Premium + 250 Créditos ($10)", url=f"https://t.me/{update.effective_chat.username}")])
         else:
             # Fallback
@@ -1120,22 +1134,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from nowpayments_handler import create_payment_invoice
         from telegram import InlineKeyboardMarkup, InlineKeyboardButton
         
-        amount = 5.0
-        invoice = create_payment_invoice(amount, user_id, description="200_credits")
+        amount = 7.0
+        invoice = create_payment_invoice(amount, user_id, description="400_credits")
         
         msg = (
             "⚠️ <b>CRÉDITOS AGOTADOS</b>\n\n"
             "Hacker Premium, has usado todos tus créditos de IA este mes.\n\n"
             "💰 <b>Recarga Express:</b>\n"
-            "• $5 = 200 Créditos\n"
-            "• $10 = 400 Créditos\n"
-            "• $20 = 850 Créditos\n\n"
+            "• $7 = 400 Créditos\n"
+            "• $14 = 900 Créditos\n"
+            "• $20 = 1500 Créditos (🔥 Oferta Irresistible)\n\n"
             "👇 <b>Selecciona tu paquete:</b>"
         )
         
         keyboard = []
         if invoice and invoice.get('invoice_url'):
-            keyboard.append([InlineKeyboardButton("💳 Recargar $5 (200 Créditos)", url=invoice['invoice_url'])])
+            keyboard.append([InlineKeyboardButton("💳 Recargar $7 (400 Créditos)", url=invoice['invoice_url'])])
         else:
             # Fallback button if payment system fails
             keyboard.append([InlineKeyboardButton("📞 Contactar Soporte para Recarga", url="https://t.me/KaliRootSupport")])
@@ -1143,11 +1157,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
         return
 
-    # Send typing action (animation in header) instead of text message
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    # Send typing action loop to keep connection alive
+    import asyncio
+    typing_task = asyncio.create_task(keep_typing(update.effective_chat.id, context))
     
     try:
         respuesta = await get_ai_response(user_id, text)
+        typing_task.cancel() # Stop typing animation
+        
         from config import FALLBACK_AI_TEXT
         if not respuesta or respuesta.strip() == FALLBACK_AI_TEXT.strip():
             await update.message.reply_text(FALLBACK_AI_TEXT, parse_mode=ParseMode.HTML)
@@ -1155,21 +1172,52 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         success = await deduct_credit(user_id)
         if success:
-            await update.message.reply_text(f"<b>Respuesta:</b>\n{respuesta}", parse_mode=ParseMode.HTML)
+            # --- BUTTON PARSING LOGIC ---
+            import re
+            from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+
+            buttons = []
+            clean_response = respuesta
+
+            # Find all [[BUTTON: Label | URL]] patterns
+            matches = re.findall(r"\[\[BUTTON:\s*(.*?)\s*\|\s*(.*?)\]\]", respuesta)
+            
+            if matches:
+                for label, url in matches:
+                    # Clean URL (remove potential markdown or spaces)
+                    url = url.strip()
+                    buttons.append([InlineKeyboardButton(label.strip(), url=url)])
+                
+                # Remove the button tags from the visible text
+                clean_response = re.sub(r"\[\[BUTTON:.*?\]\]", "", respuesta).strip()
+
+            reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
+            
+            await update.message.reply_text(f"<b>Respuesta:</b>\n{clean_response}", reply_markup=reply_markup, parse_mode=ParseMode.HTML)
             # Award XP for using AI
             from database_manager import add_xp
             await add_xp(user_id, 5)
-            
-            # Show remaining credits (REMOVED per user request)
-            # new_balance = await get_user_credits(user_id)
-            # await update.message.reply_text(f"💰 <b>Créditos Restantes:</b> {new_balance}", parse_mode=ParseMode.HTML)
         else:
-            # This shouldn't happen as we check credits above, but just in case
             await update.message.reply_text(
                 "⚠️ <b>Error al procesar créditos.</b>\n\n"
                 "Si este problema persiste, contacta a soporte.",
                 parse_mode=ParseMode.HTML
             )
     except Exception as e:
+        typing_task.cancel()
         logger.exception("Error procesando mensaje AI")
-        await update.message.reply_text("Ocurrió un error inesperado. Por favor intenta de nuevo.", parse_mode=ParseMode.HTML)
+        try:
+            await update.message.reply_text("Ocurrió un error inesperado. Por favor intenta de nuevo.", parse_mode=ParseMode.HTML)
+        except:
+            pass
+
+async def keep_typing(chat_id, context):
+    """Sends typing action every 4 seconds to keep connection alive."""
+    try:
+        while True:
+            await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+            await asyncio.sleep(4)
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error(f"Typing loop error: {e}")
