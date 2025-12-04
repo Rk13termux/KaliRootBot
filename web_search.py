@@ -3,7 +3,7 @@ from duckduckgo_search import DDGS
 
 logger = logging.getLogger(__name__)
 
-def search_web(query, max_results=2):
+def search_web(query, max_results=3):
     """
     Realiza una búsqueda avanzada usando la librería oficial de DuckDuckGo.
     Optimizado para obtener resultados técnicos y sin filtros de burbuja.

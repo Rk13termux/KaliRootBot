@@ -7,8 +7,8 @@ import os
 import json
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, CommandHandler, filters
-from bot_logic import handle_message
+from telegram.ext import Application, MessageHandler, CommandHandler, CallbackQueryHandler, filters
+from bot_logic import handle_message, handle_callback
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET, DELETE_WEBHOOK_ON_POLLING, SKIP_ENV_VALIDATION, FALLBACK_AI_TEXT
 from config import validate_config
 
@@ -38,6 +38,7 @@ telegram_app = (
 telegram_app.add_handler(CommandHandler('start', handle_message))
 telegram_app.add_handler(CommandHandler('saldo', handle_message))
 telegram_app.add_handler(CommandHandler('comprar', handle_message))
+telegram_app.add_handler(CallbackQueryHandler(handle_callback))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 TELEGRAM_STARTED = False

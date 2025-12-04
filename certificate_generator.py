@@ -13,28 +13,15 @@ def ensure_assets_dir():
     if not os.path.exists(ASSETS_DIR):
         os.makedirs(ASSETS_DIR)
 
-def create_fallback_template():
-    """Creates a simple placeholder certificate template if none exists."""
-    ensure_assets_dir()
-    # Always recreate to ensure new dimensions/colors apply if file exists but is old
-    # Create a 1900x900 dark image with Telegram Blue border
-    telegram_blue = (0, 136, 204)
-    img = Image.new('RGB', (1900, 900), color=(20, 20, 20))
-    draw = ImageDraw.Draw(img)
-    # Draw border
-    draw.rectangle([20, 20, 1880, 880], outline=telegram_blue, width=10)
-    # Save
-    img.save(CERT_TEMPLATE_PATH)
-    logger.info("Created/Updated fallback certificate template.")
-
 def generate_certificate(user_name: str, user_id: int, module_title: str) -> str:
     """
     Generates a certificate image for the user.
     Returns the path to the generated image.
     """
     try:
-        # Force recreation of template to ensure correct size/color
-        create_fallback_template()
+        if not os.path.exists(CERT_TEMPLATE_PATH):
+            logger.error(f"Certificate template not found at {CERT_TEMPLATE_PATH}")
+            return None
         
         img = Image.open(CERT_TEMPLATE_PATH)
         draw = ImageDraw.Draw(img)

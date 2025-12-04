@@ -3,15 +3,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-TELEGRAM_WEBHOOK_URL = os.getenv("TELEGRAM_WEBHOOK_URL")
-TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET")
-NOWPAYMENTS_API_KEY = os.getenv("NOWPAYMENTS_API_KEY")
-IPN_SECRET_KEY = os.getenv("IPN_SECRET_KEY")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip() or None
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip() or None
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip() or None
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "").strip() or None
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip() or None
+TELEGRAM_WEBHOOK_URL = os.getenv("TELEGRAM_WEBHOOK_URL", "").strip() or None
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip() or None
+NOWPAYMENTS_API_KEY = os.getenv("NOWPAYMENTS_API_KEY", "").strip() or None
+IPN_SECRET_KEY = os.getenv("IPN_SECRET_KEY", "").strip() or None
 
 # Optional controls
 GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')

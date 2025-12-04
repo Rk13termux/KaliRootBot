@@ -1,4 +1,5 @@
 import logging
+import requests  # Added for URL validation
 import html
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
@@ -10,6 +11,16 @@ from nowpayments_handler import create_payment_invoice
 import uuid
 
 logger = logging.getLogger(__name__)
+import asyncio
+
+def is_url_valid(url: str) -> bool:
+    """Check if a URL is reachable (status < 400). Returns False on exceptions."""
+    if not url: return False
+    try:
+        response = requests.head(url, timeout=3, allow_redirects=True)
+        return response.status_code < 400
+    except Exception:
+        return False
 
 # --- MENUS ---
 MAIN_MENU = [
@@ -311,10 +322,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             keyboard = []
-            if invoice and invoice.get('invoice_url'):
+            if invoice and invoice.get('invoice_url') and is_url_valid(invoice['invoice_url']):
                 await set_subscription_pending(user_id, invoice.get('invoice_id'))
                 keyboard = [[InlineKeyboardButton("🚀 Desbloquear Acceso Total ($10)", url=invoice['invoice_url'])]]
-            
+            else:
+                keyboard = []  # No valid URL, omit button            
             await update.message.reply_text(
                 msg,
                 reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
@@ -455,11 +467,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             from telegram import InlineKeyboardMarkup, InlineKeyboardButton
             # Button opens the link in the default browser/webview, avoiding Desktop bugs
-            kb = [[InlineKeyboardButton("📖 Abrir Lección Completa", url=module['link'])]]
+            kb = []
+            if is_url_valid(module['link']):
+                kb = [[InlineKeyboardButton("📖 Abrir Lección Completa", url=module['link'])]]
+            else:
+                msg += "\n\n⚠️ <b>Nota:</b> El contenido está en mantenimiento temporalmente."
             
             await update.message.reply_text(
                 msg,
-                reply_markup=InlineKeyboardMarkup(kb),
+                reply_markup=InlineKeyboardMarkup(kb) if kb else None,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True # FIX: Disable broken preview on Desktop
             )
@@ -606,10 +622,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             kb = []
-            if invoice and invoice.get('invoice_url'):
+            if invoice and invoice.get('invoice_url') and is_url_valid(invoice['invoice_url']):
                 await set_subscription_pending(user_id, invoice.get('invoice_id'))
                 kb = [[InlineKeyboardButton("🚀 Desbloquear Laboratorios ($10)", url=invoice['invoice_url'])]]
-            
+            else:
+                kb = []  # Invalid or missing URL            
             await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
             return
 
@@ -717,11 +734,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 
                 kb = []
-                if invoice and invoice.get('invoice_url'):
+                if invoice and invoice.get('invoice_url') and is_url_valid(invoice['invoice_url']):
                     await set_subscription_pending(user_id, invoice.get('invoice_id'))
                     kb = [[InlineKeyboardButton("🚀 Desbloquear Laboratorios ($10)", url=invoice['invoice_url'])]]
+                else:
+                    kb = [] # Invalid URL
                 
-                await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
+                await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb) if kb else None, parse_mode=ParseMode.HTML)
                 return
             
             # Check if Completed
@@ -872,11 +891,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-        keyboard = [[InlineKeyboardButton("💬 Abrir Chat con Soporte", url=f"https://t.me/{support_username}")]]
-        
+        support_url = f"https://t.me/{support_username}"
+        keyboard = []
+        if is_url_valid(support_url):
+            keyboard = [[InlineKeyboardButton("💬 Abrir Chat con Soporte", url=support_url)]]
+
         await update.message.reply_text(
             msg,
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
             parse_mode=ParseMode.HTML
         )
         return
@@ -955,9 +977,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         keyboard = []
-        if inv_starter: keyboard.append([InlineKeyboardButton("🥉 Comprar Starter ($7)", url=inv_starter['invoice_url'])])
-        if inv_pro: keyboard.append([InlineKeyboardButton("🥈 Comprar Hacker Pro ($14)", url=inv_pro['invoice_url'])])
-        if inv_elite: keyboard.append([InlineKeyboardButton("🥇 Comprar Elite ($20)", url=inv_elite['invoice_url'])])
+        if inv_starter and inv_starter.get('invoice_url') and is_url_valid(inv_starter['invoice_url']):
+            keyboard.append([InlineKeyboardButton("🥉 Comprar Starter ($7)", url=inv_starter['invoice_url'])])
+        if inv_pro and inv_pro.get('invoice_url') and is_url_valid(inv_pro['invoice_url']):
+            keyboard.append([InlineKeyboardButton("🥈 Comprar Hacker Pro ($14)", url=inv_pro['invoice_url'])])
+        if inv_elite and inv_elite.get('invoice_url') and is_url_valid(inv_elite['invoice_url']):
+            keyboard.append([InlineKeyboardButton("🥇 Comprar Elite ($20)", url=inv_elite['invoice_url'])])
         
         if not keyboard:
             await update.message.reply_text("⚠️ Error de conexión con pagos. Intenta más tarde.", parse_mode=ParseMode.HTML)
@@ -995,7 +1020,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         keyboard = []
-        if inv_sub:
+        if inv_sub and inv_sub.get('invoice_url') and is_url_valid(inv_sub['invoice_url']):
             await set_subscription_pending(user_id, inv_sub.get('invoice_id'))
             keyboard.append([InlineKeyboardButton("🚀 Activar Premium ($10/mes)", url=inv_sub['invoice_url'])])
         else:
@@ -1042,13 +1067,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             keyboard = []
-            if inv_sub:
+            if inv_sub and inv_sub.get('invoice_url') and is_url_valid(inv_sub['invoice_url']):
                 await set_subscription_pending(user_id, inv_sub.get('invoice_id'))
                 keyboard.append([InlineKeyboardButton("💎 Activar Premium ($10/mes)", url=inv_sub['invoice_url'])])
             else:
-                keyboard.append([InlineKeyboardButton("📞 Contactar Soporte", url="https://t.me/KaliRootSupport")])
+                support_url = "https://t.me/KaliRootSupport"
+                if is_url_valid(support_url):
+                    keyboard.append([InlineKeyboardButton("📞 Contactar Soporte", url=support_url)])
                 
-            await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+            await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
         return
 
     if text == "📈 Estadísticas Personales":
@@ -1119,14 +1146,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         keyboard = []
-        if invoice and invoice.get('invoice_url'):
+        if invoice and invoice.get('invoice_url') and is_url_valid(invoice['invoice_url']):
             keyboard.append([InlineKeyboardButton("💳 Recargar 400 Créditos ($7)", url=invoice['invoice_url'])])
-            keyboard.append([InlineKeyboardButton("🚀 Mejor Oferta: Premium + 250 Créditos ($10)", url=f"https://t.me/{update.effective_chat.username}")])
+            
+            offer_url = f"https://t.me/{update.effective_chat.username}"
+            # Note: update.effective_chat.username might be None for private chats or user's username? 
+            # Actually effective_chat.username is the bot's username if it's a private chat? No, it's the user/group.
+            # If it's a private chat with the bot, effective_chat is the user. 
+            # The original code used this, assuming it links to something valid? 
+            # If it's meant to link to the bot itself, it should be context.bot.username.
+            # Assuming the intention was a valid link, we check it.
+            if update.effective_chat.username:
+                 offer_url = f"https://t.me/{update.effective_chat.username}"
+                 if is_url_valid(offer_url):
+                     keyboard.append([InlineKeyboardButton("🚀 Mejor Oferta: Premium + 250 Créditos ($10)", url=offer_url)])
         else:
             # Fallback
-            keyboard.append([InlineKeyboardButton("📞 Contactar Soporte", url="https://t.me/KaliRootSupport")])
-        
-        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+            support_url = "https://t.me/KaliRootSupport"
+            if is_url_valid(support_url):
+                keyboard.append([InlineKeyboardButton("📞 Contactar Soporte", url=support_url)])
+
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
         return
 
     if credits == 0 and is_sub:
@@ -1148,17 +1188,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         keyboard = []
-        if invoice and invoice.get('invoice_url'):
+        if invoice and invoice.get('invoice_url') and is_url_valid(invoice['invoice_url']):
             keyboard.append([InlineKeyboardButton("💳 Recargar $7 (400 Créditos)", url=invoice['invoice_url'])])
         else:
             # Fallback button if payment system fails
-            keyboard.append([InlineKeyboardButton("📞 Contactar Soporte para Recarga", url="https://t.me/KaliRootSupport")])
+            support_url = "https://t.me/KaliRootSupport"
+            if is_url_valid(support_url):
+                keyboard.append([InlineKeyboardButton("📞 Contactar Soporte para Recarga", url=support_url)])
         
-        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
         return
 
     # Send typing action loop to keep connection alive
     import asyncio
+    # 1. Enviar acción inmediata para feedback visual instantáneo
+    try:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    except Exception as e:
+        logger.warning(f"Failed to send typing action: {e}")
+    # 2. Iniciar tarea de fondo para mantener la animación
     typing_task = asyncio.create_task(keep_typing(update.effective_chat.id, context))
     
     try:
@@ -1178,22 +1226,100 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             buttons = []
             clean_response = respuesta
+            seen_urls = set()
+
+            # --- SCRIPT PARSING LOGIC ---
+            script_match = re.search(r"\[\[SCRIPT:\s*(.*?)\]\]", respuesta)
+            if script_match:
+                filename = script_match.group(1).strip()
+                # Extract the LAST code block (assuming it's the script)
+                # We look for ```language ... ``` or just ``` ... ```
+                code_blocks = re.findall(r"```(?:[\w+\-#]+)?\n(.*?)```", respuesta, re.DOTALL)
+                
+                if code_blocks:
+                    script_content = code_blocks[-1] # Use the last block
+                    script_id = str(uuid.uuid4())
+                    SCRIPT_STORE[script_id] = {'filename': filename, 'content': script_content}
+                    
+                    buttons.append([InlineKeyboardButton(f"📥 Descargar {filename}", callback_data=f"dl_script_{script_id}")])
+                    
+                    # Remove the tag from text
+                    clean_response = clean_response.replace(script_match.group(0), "")
+
 
             # Find all [[BUTTON: Label | URL]] patterns
+            # Regex handles optional whitespace and potential markdown/HTML noise around the tag
             matches = re.findall(r"\[\[BUTTON:\s*(.*?)\s*\|\s*(.*?)\]\]", respuesta)
             
             if matches:
                 for label, url in matches:
-                    # Clean URL (remove potential markdown or spaces)
-                    url = url.strip()
-                    buttons.append([InlineKeyboardButton(label.strip(), url=url)])
+                    # Clean URL and Label
+                    # Remove any HTML tags from URL (e.g. <code>nmap</code> -> nmap)
+                    url = re.sub(r'<[^>]+>', '', url).strip()
+                    # Remove any surrounding quotes if present
+                    url = url.strip("'\"")
+                    label = label.strip()
+                    
+                    # Deduplicate based on URL
+                    if url not in seen_urls and is_url_valid(url): # Validate URL here too!
+                        buttons.append([InlineKeyboardButton(label, url=url)])
+                        seen_urls.add(url)
                 
                 # Remove the button tags from the visible text
                 clean_response = re.sub(r"\[\[BUTTON:.*?\]\]", "", respuesta).strip()
 
             reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
             
-            await update.message.reply_text(f"<b>Respuesta:</b>\n{clean_response}", reply_markup=reply_markup, parse_mode=ParseMode.HTML)
+            # Smart Chunking Logic
+            MAX_LENGTH = 4000
+            if len(clean_response) <= MAX_LENGTH:
+                await update.message.reply_text(f"<b>Respuesta:</b>\n{clean_response}", reply_markup=reply_markup, parse_mode=ParseMode.HTML)
+            else:
+                # Split by lines to avoid breaking inline tags like <b>
+                lines = clean_response.split('\n')
+                chunks = []
+                current_chunk = ""
+                in_pre = False
+                
+                for line in lines:
+                    # Calculate added length (line + newline)
+                    line_len = len(line) + 1
+                    
+                    # Check if adding this line exceeds the limit
+                    if len(current_chunk) + line_len > MAX_LENGTH:
+                        # Chunk is full, finalize it
+                        if in_pre:
+                            # If we are inside a code block, close it safely
+                            chunks.append(current_chunk + "</code></pre>")
+                            # Start next chunk with reopening the block
+                            current_chunk = "<pre><code>" + line + "\n"
+                        else:
+                            chunks.append(current_chunk)
+                            current_chunk = line + "\n"
+                    else:
+                        current_chunk += line + "\n"
+                    
+                    # Update <pre> state for the NEXT iteration/split check
+                    # We assume <pre> tags don't nest and are well-formed by our formatter
+                    if "<pre>" in line:
+                        in_pre = True
+                    if "</pre>" in line:
+                        in_pre = False
+                
+                # Append the last chunk
+                if current_chunk:
+                    chunks.append(current_chunk)
+                
+                # Send first chunk with title
+                await update.message.reply_text(f"<b>Respuesta:</b>\n{chunks[0]}", parse_mode=ParseMode.HTML)
+                
+                # Send middle chunks (plain, no header)
+                for chunk in chunks[1:-1]:
+                    await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+                
+                # Send last chunk with buttons (plain, no header)
+                if len(chunks) > 1:
+                    await update.message.reply_text(chunks[-1], reply_markup=reply_markup, parse_mode=ParseMode.HTML)
             # Award XP for using AI
             from database_manager import add_xp
             await add_xp(user_id, 5)
@@ -1221,3 +1347,37 @@ async def keep_typing(chat_id, context):
         pass
     except Exception as e:
         logger.error(f"Typing loop error: {e}")
+
+SCRIPT_STORE = {}
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    if data.startswith("dl_script_"):
+        script_id = data.replace("dl_script_", "")
+        script_data = SCRIPT_STORE.get(script_id)
+        
+        if script_data:
+            import os
+            filename = script_data['filename']
+            content = script_data['content']
+            
+            # Create temp file
+            path = f"/tmp/{filename}"
+            try:
+                with open(path, "w") as f:
+                    f.write(content)
+                
+                await query.message.reply_document(
+                    document=open(path, "rb"),
+                    caption=f"📜 <b>{filename}</b>\n\nGenerado por KaliRoot AI.",
+                    parse_mode=ParseMode.HTML
+                )
+                os.remove(path)
+            except Exception as e:
+                logger.error(f"Error sending script: {e}")
+                await query.message.reply_text("❌ Error al generar el archivo.")
+        else:
+            await query.message.reply_text("⚠️ El script ha expirado o no existe.")
