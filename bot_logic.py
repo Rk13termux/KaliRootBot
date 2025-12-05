@@ -28,7 +28,7 @@ MAIN_MENU = [
     [KeyboardButton("🚀 Mi Ruta de Aprendizaje"), KeyboardButton("🧪 Laboratorios Prácticos")],
     [KeyboardButton("🛒 Tienda / Recargas"), KeyboardButton("⚙️ Mi Cuenta")],
     [KeyboardButton("👥 Comunidad"), KeyboardButton("🛠️ Tools")],
-    [KeyboardButton("🌟 Web App Premium", web_app=WebAppInfo(url=f"{TELEGRAM_WEBHOOK_URL.replace('/webhook/telegram', '')}/webapp_v2"))]
+    [KeyboardButton("🧹 Limpiar Chat")]
 ]
 
 TOOLS_MENU = [
@@ -210,6 +210,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💡 <i>Tip: Pídeme cualquier comando o script para Termux. Conozco la Wiki de memoria.</i>"
         )
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        return
+
+    # LIMPIAR CHAT - Muestra advertencia con botón de confirmación
+    if text == "🧹 Limpiar Chat":
+        await clean_trigger_message(update)
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        warning_msg = (
+            "🧹 <b>LIMPIEZA DE CHAT</b>\n\n"
+            "⚠️ <b>¡ADVERTENCIA!</b>\n\n"
+            "Estás a punto de <b>reiniciar completamente</b> tu experiencia en KaliRoot.\n\n"
+            "Esta acción:\n"
+            "• 🗑️ Intentará borrar los mensajes recientes\n"
+            "• 🔄 Reiniciará el bot con el menú principal\n"
+            "• 📱 Te mostrará el mensaje de bienvenida\n\n"
+            "<i>Nota: Algunos mensajes muy antiguos no podrán ser eliminados por limitaciones de Telegram.</i>\n\n"
+            "¿Deseas continuar?"
+        )
+        
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🗑️ Sí, Limpiar Todo", callback_data="confirm_clear_chat")],
+            [InlineKeyboardButton("❌ Cancelar", callback_data="cancel_clear_chat")]
+        ])
+        
+        await update.message.reply_text(warning_msg, reply_markup=keyboard, parse_mode=ParseMode.HTML)
         return
 
     # 1. Ruta de Aprendizaje
@@ -1357,6 +1382,90 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     data = query.data
+    chat_id = query.message.chat_id
+    user_id = query.from_user.id
+    
+    # LIMPIAR CHAT - Confirmación
+    if data == "confirm_clear_chat":
+        try:
+            # Borrar el mensaje de advertencia
+            await query.message.delete()
+            
+            # Intentar borrar mensajes recientes (últimos 100)
+            deleted_count = 0
+            current_msg_id = query.message.message_id
+            
+            # Telegram solo permite borrar mensajes de las últimas 48 horas
+            for i in range(100):
+                try:
+                    await context.bot.delete_message(chat_id=chat_id, message_id=current_msg_id - i)
+                    deleted_count += 1
+                except Exception:
+                    # Mensaje no existe o no se puede borrar
+                    pass
+            
+            # Enviar mensaje de éxito y el /start
+            from database_manager import register_user_if_not_exists, get_user_credits
+            
+            await register_user_if_not_exists(
+                user_id,
+                first_name=query.from_user.first_name,
+                last_name=query.from_user.last_name,
+                username=query.from_user.username
+            )
+            
+            credits = await get_user_credits(user_id)
+            user_name = query.from_user.first_name or "Hacker"
+            
+            welcome_msg = (
+                f"🧹 <b>¡Chat limpiado exitosamente!</b>\n"
+                f"<i>Se eliminaron aproximadamente {deleted_count} mensajes.</i>\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"👋 <b>¡Bienvenido de nuevo, {user_name}!</b>\n\n"
+                "🐉 Soy <b>KaliRoot</b>, tu mentor de hacking ético.\n\n"
+                f"💰 <b>Créditos disponibles:</b> {credits}\n\n"
+                "🎯 <b>¿Qué quieres hacer?</b>\n"
+                "• Aprende con <b>100 módulos</b> de hacking\n"
+                "• Practica en <b>laboratorios reales</b>\n"
+                "• Usa la <b>IA</b> para resolver tus dudas\n\n"
+                "<i>Selecciona una opción del menú:</i>"
+            )
+            
+            try:
+                with open('assets/portada.jpg', 'rb') as img:
+                    await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=img,
+                        caption=welcome_msg,
+                        reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True),
+                        parse_mode=ParseMode.HTML
+                    )
+            except Exception:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=welcome_msg,
+                    reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True),
+                    parse_mode=ParseMode.HTML
+                )
+                
+        except Exception as e:
+            logger.error(f"Error clearing chat: {e}")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="✅ Chat reiniciado. Usa el menú para continuar.",
+                reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True)
+            )
+        return
+    
+    # LIMPIAR CHAT - Cancelar
+    if data == "cancel_clear_chat":
+        await query.message.edit_text(
+            "❌ <b>Limpieza cancelada</b>\n\nTu chat permanece intacto.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    # Descargar script generado por IA
     if data.startswith("dl_script_"):
         script_id = data.replace("dl_script_", "")
         script_data = SCRIPT_STORE.get(script_id)
@@ -1383,3 +1492,4 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.message.reply_text("❌ Error al generar el archivo.")
         else:
             await query.message.reply_text("⚠️ El script ha expirado o no existe.")
+
