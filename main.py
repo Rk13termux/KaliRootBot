@@ -1187,13 +1187,11 @@ async def webapp_dashboard(token: str):
             logger.error(f"Error fetching user data for dashboard: {e}")
             # Continue with default values
         
-        html = HTML_PREMIUM.format(
-            user_name=user_name,
-            user_initial=user_initial,
-            modules_completed=len(completed_modules),
-            credits=credits,
-            days_left=days_left
-        )
+        html = HTML_PREMIUM.replace("{user_name}", user_name)\
+            .replace("{user_initial}", user_initial)\
+            .replace("{modules_completed}", str(len(completed_modules)))\
+            .replace("{credits}", str(credits))\
+            .replace("{days_left}", str(days_left))
         
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
         
