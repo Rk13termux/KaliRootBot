@@ -28,7 +28,7 @@ MAIN_MENU = [
     [KeyboardButton("🚀 Mi Ruta de Aprendizaje"), KeyboardButton("🧪 Laboratorios Prácticos")],
     [KeyboardButton("🛒 Tienda / Recargas"), KeyboardButton("⚙️ Mi Cuenta")],
     [KeyboardButton("👥 Comunidad"), KeyboardButton("🛠️ Tools")],
-    [KeyboardButton("🌟 Web App Premium", web_app=WebAppInfo(url=f"{TELEGRAM_WEBHOOK_URL}/webapp"))]
+    [KeyboardButton("🌟 Web App Premium", web_app=WebAppInfo(url=f"{TELEGRAM_WEBHOOK_URL.replace('/webhook/telegram', '')}/webapp"))]
 ]
 
 TOOLS_MENU = [
