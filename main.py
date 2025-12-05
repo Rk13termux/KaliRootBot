@@ -598,9 +598,7 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
             margin-bottom: 16px;
         }
         .plan-name { font-size: 18px; font-weight: 600; }
-        .price {
-            text-align: right;
-        }
+        .price { text-align: right; }
         .price-amount {
             font-size: 32px;
             font-weight: 700;
@@ -611,10 +609,7 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
             color: var(--tg-theme-hint-color, #708499);
         }
         
-        .features {
-            list-style: none;
-            margin-bottom: 20px;
-        }
+        .features { list-style: none; margin-bottom: 20px; }
         .features li {
             padding: 10px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -644,6 +639,44 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
             color: var(--tg-theme-button-text-color, #ffffff);
         }
         .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-loading {
+            position: relative;
+        }
+        .btn-loading::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-msg {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+        .status-msg.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+        .status-msg.success {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
         
         .guarantee {
             text-align: center;
@@ -688,9 +721,10 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
                 <li><span class="check">✓</span> Soporte Prioritario 24/7</li>
                 <li><span class="check">✓</span> Actualizaciones Exclusivas</li>
             </ul>
-            <a href="{payment_url}" class="btn btn-primary" id="payBtn">
+            <button class="btn btn-primary" id="payBtn" data-user="{user_id}">
                 💎 Activar Premium Ahora
-            </a>
+            </button>
+            <div id="statusMsg"></div>
         </div>
         
         <div class="guarantee">
@@ -707,42 +741,83 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
         var tg = window.Telegram && window.Telegram.WebApp;
         if (tg) { tg.ready(); tg.expand(); }
         
-        document.getElementById('payBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            var url = this.getAttribute('href');
-            
-            // Check if we have a valid payment URL
-            if (url && url.length > 0 && !url.includes('{payment_url}')) {
-                if (url.startsWith('tg://') || url.includes('t.me/')) {
-                    // Telegram deep link - open in Telegram
-                    if (tg) {
-                        tg.openTelegramLink(url.replace('tg://resolve?domain=', 'https://t.me/').replace('&', '?'));
-                        setTimeout(function() { tg.close(); }, 500);
-                    } else {
-                        window.location.href = url;
-                    }
-                } else if (url.startsWith('http')) {
-                    // External URL (NOWPayments) - open in browser
-                    if (tg) {
-                        tg.openLink(url);
-                    } else {
-                        window.open(url, '_blank');
-                    }
-                }
+        var payBtn = document.getElementById('payBtn');
+        var statusMsg = document.getElementById('statusMsg');
+        var userId = payBtn.getAttribute('data-user');
+        
+        function setStatus(msg, type) {
+            statusMsg.textContent = msg;
+            statusMsg.className = 'status-msg ' + (type || '');
+            statusMsg.style.display = msg ? 'block' : 'none';
+        }
+        
+        function setLoading(loading) {
+            payBtn.disabled = loading;
+            if (loading) {
+                payBtn.classList.add('btn-loading');
+                payBtn.innerHTML = 'Generando enlace de pago';
             } else {
-                // No valid URL - redirect to bot
-                if (tg) {
-                    tg.showAlert('Redirigiendo al bot para suscripción...');
-                    setTimeout(function() {
-                        tg.openTelegramLink('https://t.me/KalyRootAiBot?start=premium');
-                        tg.close();
-                    }, 1000);
-                }
+                payBtn.classList.remove('btn-loading');
+                payBtn.innerHTML = '💎 Activar Premium Ahora';
             }
+        }
+        
+        payBtn.addEventListener('click', function() {
+            if (!userId || userId === '{user_id}') {
+                setStatus('Error: No se pudo identificar tu usuario. Abre la app desde el bot.', 'error');
+                return;
+            }
+            
+            setLoading(true);
+            setStatus('');
+            
+            fetch('/api/create-invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: parseInt(userId),
+                    amount: 10.0,
+                    type: 'subscription'
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                setLoading(false);
+                
+                if (data.invoice_url) {
+                    setStatus('✅ Enlace generado. Abriendo página de pago...', 'success');
+                    
+                    // Open payment page
+                    setTimeout(function() {
+                        if (tg) {
+                            tg.openLink(data.invoice_url);
+                        } else {
+                            window.open(data.invoice_url, '_blank');
+                        }
+                    }, 500);
+                    
+                    // Change button to "check status"
+                    setTimeout(function() {
+                        payBtn.innerHTML = '🔄 Ya pagué - Verificar';
+                        payBtn.onclick = function() {
+                            window.location.reload();
+                        };
+                    }, 2000);
+                } else {
+                    setStatus('❌ ' + (data.error || 'Error al generar el enlace de pago'), 'error');
+                    payBtn.innerHTML = '🔄 Reintentar';
+                }
+            })
+            .catch(function(err) {
+                setLoading(false);
+                setStatus('❌ Error de conexión. Intenta de nuevo.', 'error');
+                payBtn.innerHTML = '🔄 Reintentar';
+            });
         });
     </script>
 </body>
 </html>"""
+
 
 HTML_PREMIUM = """<!DOCTYPE html>
 <html lang="es">
@@ -1203,7 +1278,7 @@ async def webapp_dashboard(token: str):
 async def webapp_upsell(token: str = ""):
     """Serves the subscription page for non-premium users."""
     try:
-        user_id = None
+        user_id = 0
         logger.info(f"Upsell page requested with token: {token[:20] if token else 'None'}...")
         
         if token:
@@ -1212,41 +1287,51 @@ async def webapp_upsell(token: str = ""):
         else:
             logger.warning("No token provided to upsell page")
         
-        # Generate payment URL if we have a user_id
-        payment_url = ""
-        
-        if user_id:
-            try:
-                from nowpayments_handler import create_payment_invoice
-                logger.info(f"Attempting to create invoice for user {user_id}")
-                invoice = create_payment_invoice(10.0, user_id, "subscription")
-                logger.info(f"Invoice result for user {user_id}: {invoice}")
-                
-                if invoice and invoice.get('invoice_url'):
-                    payment_url = invoice['invoice_url']
-                    logger.info(f"Payment URL generated: {payment_url[:50]}...")
-                    # Store pending subscription
-                    try:
-                        from database_manager import set_subscription_pending
-                        await set_subscription_pending(user_id, str(invoice.get('invoice_id', '')))
-                    except Exception as e:
-                        logger.error(f"Error setting pending subscription: {e}")
-                else:
-                    logger.warning(f"Invoice creation returned no URL: {invoice}")
-            except Exception as e:
-                logger.exception(f"Error creating payment invoice: {e}")
-        else:
-            logger.warning("No user_id available, cannot create invoice")
-        
-        # If no payment URL, use a fallback that directs to bot
-        if not payment_url:
-            payment_url = "tg://resolve?domain=KalyRootAiBot&start=premium"
-            logger.info("Using fallback payment URL (bot redirect)")
-        
-        html = HTML_NO_PREMIUM.replace("{payment_url}", payment_url)
+        # Just pass user_id to the HTML - invoice is created on-demand via API
+        html = HTML_NO_PREMIUM.replace("{user_id}", str(user_id) if user_id else "0")
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
         
     except Exception as e:
         logger.exception(f"Upsell page error: {e}")
         return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Error</h2><p style='color:#708499'>Usa /suscribirse en el bot</p></div></body></html>", status_code=500, media_type="text/html; charset=utf-8")
 
+# API endpoint for creating payment invoices
+@app.post("/api/create-invoice")
+async def api_create_invoice(request: Request):
+    """Creates a NOWPayments invoice for subscription or credits."""
+    try:
+        data = await request.json()
+        user_id = data.get('user_id')
+        amount = data.get('amount', 10.0)
+        payment_type = data.get('type', 'subscription')
+        
+        if not user_id or user_id == 0:
+            return {"error": "User ID inválido"}
+        
+        logger.info(f"API: Creating invoice for user {user_id}, amount ${amount}, type {payment_type}")
+        
+        from nowpayments_handler import create_payment_invoice
+        invoice = create_payment_invoice(amount, user_id, payment_type)
+        
+        if invoice and invoice.get('invoice_url'):
+            logger.info(f"API: Invoice created successfully: {invoice['invoice_url'][:50]}...")
+            
+            # Store pending subscription
+            try:
+                from database_manager import set_subscription_pending
+                await set_subscription_pending(user_id, str(invoice.get('invoice_id', '')))
+            except Exception as e:
+                logger.error(f"Error setting pending subscription: {e}")
+            
+            return {
+                "success": True,
+                "invoice_url": invoice['invoice_url'],
+                "invoice_id": invoice['invoice_id']
+            }
+        else:
+            logger.error(f"API: Invoice creation failed for user {user_id}")
+            return {"error": "No se pudo crear el enlace de pago. Verifica la configuración de NOWPayments."}
+            
+    except Exception as e:
+        logger.exception(f"API create-invoice error: {e}")
+        return {"error": f"Error del servidor: {str(e)}"}
