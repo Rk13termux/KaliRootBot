@@ -459,7 +459,12 @@ HTML_LOADER = """
             .then(response => response.json())
             .then(data => {
                 if (data.html) {
-                    // Use srcdoc to force HTML rendering without Blob restrictions
+                    // Decode HTML entities to prevent raw code display
+                    const txt = document.createElement("textarea");
+                    txt.innerHTML = data.html;
+                    const decodedHtml = txt.value;
+
+                    // Use srcdoc with decoded HTML
                     document.body.innerHTML = ''; // Clear loader
                     const iframe = document.createElement('iframe');
                     iframe.style.position = 'fixed';
@@ -469,8 +474,7 @@ HTML_LOADER = """
                     iframe.style.height = '100%';
                     iframe.style.border = 'none';
                     iframe.style.zIndex = '9999';
-                    // srcdoc is the standard way to embed HTML directly
-                    iframe.srcdoc = data.html;
+                    iframe.srcdoc = decodedHtml;
                     document.body.appendChild(iframe);
                 } else {
                     document.body.innerHTML = "<h3 style='color:red'>Error loading content.</h3>";
