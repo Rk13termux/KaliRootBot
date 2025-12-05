@@ -456,15 +456,11 @@ HTML_LOADER = """
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({initData: data})
             })
-            .then(response => {
-                if (!response.ok) throw new Error("Server error");
-                return response.text();
-            })
-            .then(html => {
-                if (html.includes("<!DOCTYPE html>")) {
-                    document.open();
-                    document.write(html);
-                    document.close();
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect_url) {
+                    // Success! Redirect to the dashboard
+                    window.location.href = data.redirect_url;
                 } else {
                     document.body.innerHTML = "<h3 style='color:red'>Access Denied</h3>";
                 }
@@ -637,31 +633,58 @@ async def webapp_entry():
     """Serves the loader which POSTs initData to /webapp/check for secure validation."""
     return HTML_LOADER
 
-@app.post("/webapp/check", response_class=HTMLResponse)
+import time
+import base64
+
+def create_token(user_id: int) -> str:
+    """Creates a temporary signed token for the dashboard."""
+    timestamp = int(time.time())
+    payload = f"{user_id}:{timestamp}"
+    signature = hmac.new(TELEGRAM_BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{signature}"
+
+def verify_token(token: str) -> int | None:
+    """Verifies the token and returns user_id if valid and not expired."""
+    try:
+        parts = token.split(':')
+        if len(parts) != 3: return None
+        user_id_str, timestamp_str, signature = parts
+        
+        # Check expiry (valid for 60 seconds)
+        if int(time.time()) - int(timestamp_str) > 60:
+            return None
+            
+        # Verify signature
+        payload = f"{user_id_str}:{timestamp_str}"
+        expected_signature = hmac.new(TELEGRAM_BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        
+        if hmac.compare_digest(signature, expected_signature):
+            return int(user_id_str)
+        return None
+    except Exception:
+        return None
+
+@app.post("/webapp/check")
 async def webapp_check(request: Request):
-    """Validates initData and returns the appropriate HTML (Premium vs No Premium)."""
+    """Validates initData and returns a redirect URL with a signed token."""
     try:
         data = await request.json()
         init_data = data.get('initData')
         user_data = validate_telegram_data(init_data)
         
         if not user_data:
-            return HTMLResponse(content=HTML_NO_PREMIUM, status_code=403)
+            return {"error": "Invalid data"}
             
         user_id = user_data.get('id')
-        first_name = user_data.get('first_name', 'Hacker')
         
         # Check Supabase Subscription
         from database_manager import supabase
-        # We need to check if premium_until > now
-        # Supabase query: select premium_until from users where user_id = ...
         res = supabase.table('usuarios').select('premium_until').eq('user_id', user_id).execute()
         
         is_premium = False
         if res.data:
             premium_until_str = res.data[0].get('premium_until')
             if premium_until_str:
-                # Parse timestamp (ISO format)
                 try:
                     expiry = datetime.fromisoformat(premium_until_str.replace('Z', '+00:00'))
                     if expiry > datetime.now(expiry.tzinfo):
@@ -670,12 +693,42 @@ async def webapp_check(request: Request):
                     pass
         
         if is_premium:
-            # Inject user name into template
-            return HTMLResponse(content=HTML_PREMIUM.format(user_name=first_name))
+            token = create_token(user_id)
+            return {"redirect_url": f"/webapp/dashboard?token={token}"}
         else:
-            return HTMLResponse(content=HTML_NO_PREMIUM)
+            # For non-premium, we can also redirect to a "No Premium" page or just return error
+            # Let's redirect to dashboard but dashboard will show NO PREMIUM if token is valid but user is not?
+            # Actually, let's just use the same token mechanism. The dashboard will re-check or we encode status in token?
+            # Better: The dashboard re-checks DB? Or we trust the token means "Authenticated".
+            # But we need to show different HTML.
+            # Let's encode "is_premium" in the token? No, keep it simple.
+            # If not premium, return a special parameter or just redirect to a different route?
+            # Let's just redirect to dashboard and let dashboard check DB again? It's safer but slower.
+            # Optimization: Encode status in token: `user_id:timestamp:status:signature`
+            
+            # Simple approach: If not premium, return error to loader?
+            # The loader shows "Access Denied".
+            # But we want to show the "Upsell" page (HTML_NO_PREMIUM).
+            # So we should redirect to /webapp/upsell?
+            return {"redirect_url": f"/webapp/upsell"}
             
     except Exception as e:
         logger.exception(f"Webapp check error: {e}")
-        return HTMLResponse(content=HTML_NO_PREMIUM, status_code=500)
+        return {"error": str(e)}
+
+@app.get("/webapp/dashboard", response_class=HTMLResponse)
+async def webapp_dashboard(token: str):
+    """Serves the Premium Dashboard if token is valid."""
+    user_id = verify_token(token)
+    if not user_id:
+        return HTMLResponse(content="<h1>403 Forbidden - Invalid or Expired Token</h1>", status_code=403)
+    
+    # Optional: Fetch user name from DB or pass it in token (encoding issues).
+    # We'll just say "Elite Member".
+    return HTMLResponse(content=HTML_PREMIUM.format(user_name="Elite Member"))
+
+@app.get("/webapp/upsell", response_class=HTMLResponse)
+async def webapp_upsell():
+    """Serves the No Premium page."""
+    return HTMLResponse(content=HTML_NO_PREMIUM)
 
