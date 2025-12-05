@@ -743,7 +743,22 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
         
         var payBtn = document.getElementById('payBtn');
         var statusMsg = document.getElementById('statusMsg');
-        var userId = payBtn.getAttribute('data-user');
+        
+        // GET USER ID DIRECTLY FROM TELEGRAM SDK (not from HTML attribute)
+        var userId = null;
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+            console.log('Got user_id from Telegram SDK:', userId);
+        }
+        
+        // Fallback to data attribute if SDK doesn't have it
+        if (!userId) {
+            var attrUserId = payBtn.getAttribute('data-user');
+            if (attrUserId && attrUserId !== '{user_id}' && attrUserId !== '0') {
+                userId = parseInt(attrUserId);
+                console.log('Got user_id from data attribute:', userId);
+            }
+        }
         
         function setStatus(msg, type) {
             statusMsg.textContent = msg;
@@ -763,8 +778,8 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
         }
         
         payBtn.addEventListener('click', function() {
-            if (!userId || userId === '{user_id}') {
-                setStatus('Error: No se pudo identificar tu usuario. Abre la app desde el bot.', 'error');
+            if (!userId) {
+                setStatus('Error: No se pudo identificar tu usuario. Cierra y abre la app de nuevo.', 'error');
                 return;
             }
             
@@ -775,7 +790,7 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: parseInt(userId),
+                    user_id: userId,
                     amount: 10.0,
                     type: 'subscription'
                 })
@@ -810,6 +825,7 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
             })
             .catch(function(err) {
                 setLoading(false);
+                console.error('Fetch error:', err);
                 setStatus('❌ Error de conexión. Intenta de nuevo.', 'error');
                 payBtn.innerHTML = '🔄 Reintentar';
             });
