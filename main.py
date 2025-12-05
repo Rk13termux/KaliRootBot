@@ -1298,7 +1298,13 @@ async def webapp_upsell(token: str = ""):
         logger.info(f"Rendering upsell page with user_id: {user_id_str}")
         
         html = HTML_NO_PREMIUM.replace("{user_id}", user_id_str)
-        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+        # Add no-cache headers to prevent Telegram from caching old versions
+        response = HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
         
     except Exception as e:
         logger.exception(f"Upsell page error: {e}")
