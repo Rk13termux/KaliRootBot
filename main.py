@@ -408,14 +408,32 @@ HTML_LOADER = """
 <body>
     <div class="loader"></div>
     <script>
-        const initData = window.Telegram.WebApp.initData;
-        if (!initData) {
-            document.body.innerHTML = "<h3 style='color:red'>Error: No InitData found. Open from Telegram.</h3>";
-        } else {
+        function startApp() {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            const initData = tg.initData;
+            if (!initData) {
+                // Retry once after 500ms in case of race condition
+                setTimeout(() => {
+                    const retryData = window.Telegram.WebApp.initData;
+                    if (!retryData) {
+                         document.body.innerHTML = "<h3 style='color:red; text-align:center'>Error: No InitData found.<br>Please update Telegram or open from the official button.</h3>";
+                    } else {
+                        sendData(retryData);
+                    }
+                }, 500);
+            } else {
+                sendData(initData);
+            }
+        }
+
+        function sendData(data) {
             fetch('/webapp/check', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({initData: initData})
+                body: JSON.stringify({initData: data})
             })
             .then(response => response.json())
             .then(data => {
@@ -431,6 +449,9 @@ HTML_LOADER = """
                 document.body.innerHTML = "<h3 style='color:red'>Connection Error</h3>";
             });
         }
+        
+        // Wait for script load
+        window.onload = startApp;
     </script>
 </body>
 </html>
