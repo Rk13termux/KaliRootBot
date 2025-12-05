@@ -1204,8 +1204,13 @@ async def webapp_upsell(token: str = ""):
     """Serves the subscription page for non-premium users."""
     try:
         user_id = None
+        logger.info(f"Upsell page requested with token: {token[:20] if token else 'None'}...")
+        
         if token:
             user_id, _ = verify_token(token)
+            logger.info(f"Token verified, user_id: {user_id}")
+        else:
+            logger.warning("No token provided to upsell page")
         
         # Generate payment URL if we have a user_id
         payment_url = ""
@@ -1213,23 +1218,30 @@ async def webapp_upsell(token: str = ""):
         if user_id:
             try:
                 from nowpayments_handler import create_payment_invoice
+                logger.info(f"Attempting to create invoice for user {user_id}")
                 invoice = create_payment_invoice(10.0, user_id, "subscription")
                 logger.info(f"Invoice result for user {user_id}: {invoice}")
                 
                 if invoice and invoice.get('invoice_url'):
                     payment_url = invoice['invoice_url']
+                    logger.info(f"Payment URL generated: {payment_url[:50]}...")
                     # Store pending subscription
                     try:
                         from database_manager import set_subscription_pending
                         await set_subscription_pending(user_id, str(invoice.get('invoice_id', '')))
                     except Exception as e:
                         logger.error(f"Error setting pending subscription: {e}")
+                else:
+                    logger.warning(f"Invoice creation returned no URL: {invoice}")
             except Exception as e:
-                logger.error(f"Error creating payment invoice: {e}")
+                logger.exception(f"Error creating payment invoice: {e}")
+        else:
+            logger.warning("No user_id available, cannot create invoice")
         
         # If no payment URL, use a fallback that directs to bot
         if not payment_url:
             payment_url = "tg://resolve?domain=KalyRootAiBot&start=premium"
+            logger.info("Using fallback payment URL (bot redirect)")
         
         html = HTML_NO_PREMIUM.replace("{payment_url}", payment_url)
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
