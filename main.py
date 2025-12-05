@@ -631,7 +631,7 @@ def validate_telegram_data(init_data: str) -> dict | None:
 @app.get("/webapp_v2", response_class=HTMLResponse)
 async def webapp_entry():
     """Serves the loader which POSTs initData to /webapp/check for secure validation."""
-    return HTML_LOADER
+    return HTMLResponse(content=HTML_LOADER, media_type="text/html; charset=utf-8")
 
 import time
 import base64
@@ -721,14 +721,14 @@ async def webapp_dashboard(token: str):
     """Serves the Premium Dashboard if token is valid."""
     user_id = verify_token(token)
     if not user_id:
-        return HTMLResponse(content="<h1>403 Forbidden - Invalid or Expired Token</h1>", status_code=403)
+        return HTMLResponse(content="<h1>403 Forbidden - Invalid or Expired Token</h1>", status_code=403, media_type="text/html; charset=utf-8")
     
     # Optional: Fetch user name from DB or pass it in token (encoding issues).
     # We'll just say "Elite Member".
-    return HTMLResponse(content=HTML_PREMIUM.format(user_name="Elite Member"))
+    return HTMLResponse(content=HTML_PREMIUM.format(user_name="Elite Member"), media_type="text/html; charset=utf-8")
 
 @app.get("/webapp/upsell", response_class=HTMLResponse)
 async def webapp_upsell():
     """Serves the No Premium page."""
-    return HTMLResponse(content=HTML_NO_PREMIUM)
+    return HTMLResponse(content=HTML_NO_PREMIUM, media_type="text/html; charset=utf-8")
 
