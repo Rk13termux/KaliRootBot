@@ -1279,16 +1279,25 @@ async def webapp_upsell(token: str = ""):
     """Serves the subscription page for non-premium users."""
     try:
         user_id = 0
-        logger.info(f"Upsell page requested with token: {token[:20] if token else 'None'}...")
+        logger.info(f"Upsell page requested with token length: {len(token) if token else 0}")
         
         if token:
-            user_id, _ = verify_token(token)
-            logger.info(f"Token verified, user_id: {user_id}")
+            result = verify_token(token)
+            logger.info(f"verify_token result: {result}")
+            
+            if result and result[0]:
+                user_id = result[0]
+                logger.info(f"Token verified successfully, user_id: {user_id}")
+            else:
+                logger.warning(f"Token verification failed, result: {result}")
         else:
             logger.warning("No token provided to upsell page")
         
-        # Just pass user_id to the HTML - invoice is created on-demand via API
-        html = HTML_NO_PREMIUM.replace("{user_id}", str(user_id) if user_id else "0")
+        # Pass user_id to the HTML - invoice is created on-demand via API
+        user_id_str = str(user_id) if user_id and user_id != 0 else "0"
+        logger.info(f"Rendering upsell page with user_id: {user_id_str}")
+        
+        html = HTML_NO_PREMIUM.replace("{user_id}", user_id_str)
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
         
     except Exception as e:
