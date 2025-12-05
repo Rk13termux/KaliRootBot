@@ -413,20 +413,41 @@ HTML_LOADER = """
             tg.ready();
             tg.expand();
             
-            const initData = tg.initData;
+            // Debug info
+            const debugInfo = `
+                <p style="color:gray; font-size:10px">
+                Platform: ${tg.platform}<br>
+                Version: ${tg.version}<br>
+                Href: ${window.location.href}<br>
+                </p>
+            `;
+
+            const initData = tg.initData || getHashData();
+            
             if (!initData) {
-                // Retry once after 500ms in case of race condition
+                // Retry once
                 setTimeout(() => {
-                    const retryData = window.Telegram.WebApp.initData;
+                    const retryData = window.Telegram.WebApp.initData || getHashData();
                     if (!retryData) {
-                         document.body.innerHTML = "<h3 style='color:red; text-align:center'>Error: No InitData found.<br>Please update Telegram or open from the official button.</h3>";
+                         document.body.innerHTML = `
+                            <h3 style='color:red; text-align:center'>Error: No InitData found.</h3>
+                            <p style='color:white; text-align:center'>Please open from the official bot menu button.</p>
+                            ${debugInfo}
+                         `;
                     } else {
                         sendData(retryData);
                     }
-                }, 500);
+                }, 1000);
             } else {
                 sendData(initData);
             }
+        }
+
+        function getHashData() {
+            // Fallback: Try to get data from URL hash (tgWebAppData)
+            const hash = window.location.hash.slice(1);
+            const params = new URLSearchParams(hash);
+            return params.get('tgWebAppData');
         }
 
         function sendData(data) {
@@ -446,11 +467,10 @@ HTML_LOADER = """
                 }
             })
             .catch(err => {
-                document.body.innerHTML = "<h3 style='color:red'>Connection Error</h3>";
+                document.body.innerHTML = "<h3 style='color:red'>Connection Error: " + err.message + "</h3>";
             });
         }
         
-        // Wait for script load
         window.onload = startApp;
     </script>
 </body>
