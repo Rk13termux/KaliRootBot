@@ -390,221 +390,645 @@ import hashlib
 import urllib.parse
 from datetime import datetime
 
-# 1. HTML TEMPLATES
-HTML_LOADER = """
-<!DOCTYPE html>
+# 1. HTML TEMPLATES - Telegram Theme Colors
+# Telegram Dark Theme: bg_color=#17212b, secondary_bg=#232e3c, text=#ffffff, hint=#708499, link=#6ab2f2, button=#3390ec
+
+HTML_LOADER = """<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KaliRoot Premium</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #000; color: #06D6A0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: monospace; }
-        .loader { border: 4px solid #333; border-top: 4px solid #06D6A0; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #17212b);
+            color: var(--tg-theme-text-color, #ffffff);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .loader-container {
+            text-align: center;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--tg-theme-hint-color, #708499);
+            border-top-color: var(--tg-theme-button-color, #3390ec);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .status {
+            color: var(--tg-theme-hint-color, #708499);
+            font-size: 14px;
+        }
+        .error-box {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            max-width: 320px;
+        }
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        .error-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .error-text {
+            color: var(--tg-theme-hint-color, #708499);
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
-    <div class="loader"></div>
+    <div class="loader-container" id="main">
+        <div class="spinner"></div>
+        <p class="status" id="status">Verificando identidad...</p>
+    </div>
     <script>
-        function startApp() {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
+        (function() {
+            var tg = window.Telegram && window.Telegram.WebApp;
+            var statusEl = document.getElementById('status');
             
-            // Debug info
-            const debugInfo = `
-                <p style="color:gray; font-size:10px">
-                Platform: ${tg.platform}<br>
-                Version: ${tg.version}<br>
-                Href: ${window.location.href}<br>
-                </p>
-            `;
-
-            const initData = tg.initData || getHashData();
+            function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
             
-            if (!initData) {
-                // Retry once
-                setTimeout(() => {
-                    const retryData = window.Telegram.WebApp.initData || getHashData();
-                    if (!retryData) {
-                         document.body.innerHTML = `
-                            <h3 style='color:red; text-align:center'>Error: No InitData found.</h3>
-                            <p style='color:white; text-align:center'>Please open from the official bot menu button.</p>
-                            ${debugInfo}
-                         `;
-                    } else {
-                        sendData(retryData);
-                    }
-                }, 1000);
-            } else {
-                sendData(initData);
+            function showError(title, msg) {
+                document.getElementById('main').innerHTML = 
+                    '<div class="error-box"><div class="error-icon">🔒</div><div class="error-title">' + title + '</div><div class="error-text">' + msg + '</div></div>';
             }
-        }
-
-        function getHashData() {
-            // Fallback: Try to get data from URL hash (tgWebAppData)
-            const hash = window.location.hash.slice(1);
-            const params = new URLSearchParams(hash);
-            return params.get('tgWebAppData');
-        }
-
-        function sendData(data) {
-            fetch('/webapp/check', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({initData: data})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.redirect_url) {
-                    // Success! Redirect to the dashboard
-                    window.location.href = data.redirect_url;
+            
+            function getInitData() {
+                if (tg && tg.initData) return tg.initData;
+                try {
+                    var h = window.location.hash.slice(1);
+                    return new URLSearchParams(h).get('tgWebAppData') || '';
+                } catch(e) { return ''; }
+            }
+            
+            function authenticate(data) {
+                setStatus('Autenticando...');
+                fetch('/webapp/check', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({initData: data})
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.redirect_url) {
+                        setStatus('Acceso concedido');
+                        window.location.href = res.redirect_url;
+                    } else {
+                        showError('Acceso Denegado', res.error || 'No se pudo verificar tu identidad');
+                    }
+                })
+                .catch(function() {
+                    showError('Error de Conexión', 'Verifica tu conexión a internet');
+                });
+            }
+            
+            function init() {
+                if (tg) { tg.ready(); tg.expand(); }
+                var data = getInitData();
+                if (!data) {
+                    setStatus('Esperando datos de Telegram...');
+                    setTimeout(function() {
+                        data = getInitData();
+                        if (!data) showError('Sesión Inválida', 'Abre esta app desde el menú del bot');
+                        else authenticate(data);
+                    }, 1500);
                 } else {
-                    document.body.innerHTML = "<h3 style='color:red'>Access Denied</h3>";
+                    authenticate(data);
                 }
-            })
-            .catch(err => {
-                document.body.innerHTML = "<h3 style='color:red'>Connection Error: " + err.message + "</h3>";
-            });
+            }
+            
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+            else init();
+        })();
+    </script>
+</body>
+</html>"""
+
+HTML_NO_PREMIUM = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Obtener Premium</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #17212b);
+            color: var(--tg-theme-text-color, #ffffff);
+            min-height: 100vh;
+            padding: 0;
+        }
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(51, 144, 236, 0.1) 0%, transparent 50%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .hero-content { position: relative; z-index: 1; }
+        .crown { font-size: 64px; margin-bottom: 16px; }
+        .hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .hero p { color: var(--tg-theme-hint-color, #708499); font-size: 15px; }
+        
+        .content { padding: 24px 16px; }
+        
+        .price-card {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+        .price-card.featured {
+            border-color: var(--tg-theme-button-color, #3390ec);
+            position: relative;
+        }
+        .featured-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tg-theme-button-color, #3390ec);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 16px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+        .price-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .plan-name { font-size: 18px; font-weight: 600; }
+        .price {
+            text-align: right;
+        }
+        .price-amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color, #3390ec);
+        }
+        .price-period {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color, #708499);
         }
         
-        window.onload = startApp;
-    </script>
-</body>
-</html>
-"""
-
-HTML_NO_PREMIUM = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso Denegado</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Orbitron', sans-serif; background-color: #000; }
-        .neon-text { text-shadow: 0 0 10px #8B5CF6, 0 0 20px #8B5CF6; }
+        .features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        .features li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+        .features li:last-child { border: none; }
+        .check { color: #4ade80; font-size: 18px; }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        
+        .guarantee {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--tg-theme-hint-color, #708499);
+            font-size: 13px;
+        }
+        .guarantee span { color: #4ade80; }
+        
+        .footer-note {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #708499);
+            font-size: 12px;
+        }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center h-screen p-4 text-center">
-    <div class="mb-8">
-        <!-- Placeholder Dragon/Lock Icon -->
-        <svg class="w-32 h-32 text-purple-500 mx-auto animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+<body>
+    <div class="hero">
+        <div class="hero-content">
+            <div class="crown">👑</div>
+            <h1>Desbloquea el Poder Total</h1>
+            <p>Conviértete en un experto en ciberseguridad</p>
+        </div>
     </div>
-    <h1 class="text-4xl font-bold text-white mb-2 neon-text">ACCESO DENEGADO</h1>
-    <p class="text-gray-400 mb-8 max-w-xs">Esta zona es exclusiva para miembros <b>Elite Premium</b>. Tu suscripción no está activa.</p>
     
-    <button onclick="Telegram.WebApp.openTelegramLink('https://t.me/KalyRootAiBot?start=premium'); Telegram.WebApp.close();" 
-            class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all transform hover:scale-105">
-        💎 ACTIVAR PREMIUM AHORA
-    </button>
-</body>
-</html>
-"""
-
-HTML_PREMIUM = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KaliRoot Elite Dashboard</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="//unpkg.com/alpinejs" defer></script>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Rajdhani', sans-serif; background-color: #050505; color: #fff; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(6, 214, 160, 0.2); border-color: #06D6A0; }
-        .cyan-glow { text-shadow: 0 0 10px #06D6A0; }
-    </style>
-</head>
-<body class="p-4 pb-20">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-8">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-400 flex items-center justify-center font-bold text-lg">K</div>
-            <div>
-                <h2 class="text-xl font-bold leading-none">{user_name}</h2>
-                <span class="text-xs text-cyan-400 tracking-widest uppercase">Elite Member</span>
+    <div class="content">
+        <div class="price-card featured">
+            <div class="featured-badge">Más Popular</div>
+            <div class="price-header">
+                <span class="plan-name">Premium Mensual</span>
+                <div class="price">
+                    <div class="price-amount">$10</div>
+                    <div class="price-period">USD / mes</div>
+                </div>
             </div>
+            <ul class="features">
+                <li><span class="check">✓</span> 100 Módulos de Hacking Ético</li>
+                <li><span class="check">✓</span> Laboratorios Prácticos Ilimitados</li>
+                <li><span class="check">✓</span> 250 Créditos IA de Bienvenida</li>
+                <li><span class="check">✓</span> Certificados Profesionales</li>
+                <li><span class="check">✓</span> Soporte Prioritario 24/7</li>
+                <li><span class="check">✓</span> Actualizaciones Exclusivas</li>
+            </ul>
+            <a href="{payment_url}" class="btn btn-primary" id="payBtn">
+                💎 Activar Premium Ahora
+            </a>
         </div>
-        <button onclick="Telegram.WebApp.close()" class="text-gray-500 hover:text-white">✕</button>
+        
+        <div class="guarantee">
+            <span>🔒</span> Pago seguro con criptomonedas (USDT)
+        </div>
     </div>
-
-    <h1 class="text-3xl font-bold mb-6 cyan-glow">PREMIUM ASSETS</h1>
-
-    <!-- Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Card 1 -->
-        <div class="glass p-4 rounded-xl card-hover transition-all duration-300 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 bg-purple-600 text-xs px-2 py-1 rounded-bl-lg">HOT</div>
-            <h3 class="text-xl font-bold text-white mb-1">Kali Linux Ultimate Pack</h3>
-            <p class="text-gray-400 text-sm mb-4">Configuraciones, dotfiles y scripts esenciales pre-instalados.</p>
-            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_1" class="block w-full text-center bg-cyan-500 hover:bg-cyan-600 text-black font-bold py-2 rounded-lg transition-colors">
-                📥 DESCARGAR .ZIP
-            </a>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
-            <h3 class="text-xl font-bold text-white mb-1">Termux Elite Scripts</h3>
-            <p class="text-gray-400 text-sm mb-4">Automatización de ataques y setup de entorno móvil.</p>
-            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_2" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
-                📥 DESCARGAR .ZIP
-            </a>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
-            <h3 class="text-xl font-bold text-white mb-1">Wi-Fi Hacking Toolkit</h3>
-            <p class="text-gray-400 text-sm mb-4">Wordlists optimizadas y scripts de desautenticación.</p>
-            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_3" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
-                📥 DESCARGAR .ZIP
-            </a>
-        </div>
-
-        <!-- Card 4 -->
-        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
-            <h3 class="text-xl font-bold text-white mb-1">Web Pentest Suite</h3>
-            <p class="text-gray-400 text-sm mb-4">Payloads XSS/SQLi y plantillas de reportes.</p>
-            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_4" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
-                📥 DESCARGAR .ZIP
-            </a>
-        </div>
-
-        <!-- Card 5 -->
-        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
-            <h3 class="text-xl font-bold text-white mb-1">Anonimato & Tor Bundle</h3>
-            <p class="text-gray-400 text-sm mb-4">Configuraciones de proxychains y VPNs seguras.</p>
-            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_5" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
-                📥 DESCARGAR .ZIP
-            </a>
-        </div>
-
-        <!-- Card 6 -->
-        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
-            <h3 class="text-xl font-bold text-white mb-1">Exploit Database Offline</h3>
-            <p class="text-gray-400 text-sm mb-4">Base de datos local de exploits buscable.</p>
-            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_6" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
-                📥 DESCARGAR .ZIP
-            </a>
-        </div>
+    
+    <div class="footer-note">
+        Al suscribirte aceptas los términos de servicio.<br>
+        Acceso inmediato después del pago confirmado.
     </div>
     
     <script>
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        
+        document.getElementById('payBtn').addEventListener('click', function(e) {
+            var url = this.getAttribute('href');
+            if (url && url !== '#' && url !== '{payment_url}') {
+                if (tg) {
+                    tg.openLink(url);
+                }
+            } else {
+                e.preventDefault();
+                if (tg) {
+                    tg.showAlert('Para suscribirte, usa el comando /suscribirse en el bot.');
+                    setTimeout(function() { tg.close(); }, 2000);
+                }
+            }
+        });
     </script>
 </body>
-</html>
-"""
+</html>"""
+
+HTML_PREMIUM = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KaliRoot Elite</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #17212b);
+            color: var(--tg-theme-text-color, #ffffff);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        
+        .header {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            padding: 20px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3390ec, #00d4aa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .user-info h2 { font-size: 17px; font-weight: 600; }
+        .user-info .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #000;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 16px;
+        }
+        .stat-card {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px 12px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color, #3390ec);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--tg-theme-hint-color, #708499);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .section-title {
+            padding: 20px 16px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--tg-theme-hint-color, #708499);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .resources-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 0 16px 16px;
+        }
+        .resource-card {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: block;
+        }
+        .resource-card:active {
+            transform: scale(0.98);
+        }
+        .resource-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        .resource-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .resource-desc {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #708499);
+        }
+        .resource-badge {
+            display: inline-block;
+            background: rgba(51, 144, 236, 0.2);
+            color: var(--tg-theme-button-color, #3390ec);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        
+        .action-list {
+            padding: 0 16px;
+        }
+        .action-item {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .action-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .action-icon.blue { background: rgba(51, 144, 236, 0.15); }
+        .action-icon.green { background: rgba(74, 222, 128, 0.15); }
+        .action-icon.purple { background: rgba(168, 85, 247, 0.15); }
+        .action-icon.orange { background: rgba(251, 146, 60, 0.15); }
+        .action-content { flex: 1; }
+        .action-title { font-size: 15px; font-weight: 500; }
+        .action-subtitle { font-size: 13px; color: var(--tg-theme-hint-color, #708499); }
+        .action-arrow { color: var(--tg-theme-hint-color, #708499); font-size: 18px; }
+        
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+        }
+        .bottom-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .bottom-btn.primary {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
+        }
+        .bottom-btn.secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--tg-theme-text-color, #fff);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="avatar">{user_initial}</div>
+        <div class="user-info">
+            <h2>{user_name}</h2>
+            <span class="badge">👑 ELITE MEMBER</span>
+        </div>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{modules_completed}</div>
+            <div class="stat-label">Módulos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{credits}</div>
+            <div class="stat-label">Créditos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{days_left}</div>
+            <div class="stat-label">Días</div>
+        </div>
+    </div>
+    
+    <div class="section-title">📥 Recursos Exclusivos</div>
+    <div class="resources-grid">
+        <a href="https://drive.google.com/uc?export=download&id=1example1" class="resource-card">
+            <div class="resource-icon">🐉</div>
+            <div class="resource-title">Kali Pack</div>
+            <div class="resource-desc">Configuraciones y scripts</div>
+            <span class="resource-badge">2.3 GB</span>
+        </a>
+        <a href="https://drive.google.com/uc?export=download&id=1example2" class="resource-card">
+            <div class="resource-icon">📱</div>
+            <div class="resource-title">Termux Elite</div>
+            <div class="resource-desc">Setup móvil completo</div>
+            <span class="resource-badge">450 MB</span>
+        </a>
+        <a href="https://drive.google.com/uc?export=download&id=1example3" class="resource-card">
+            <div class="resource-icon">📡</div>
+            <div class="resource-title">WiFi Toolkit</div>
+            <div class="resource-desc">Wordlists y scripts</div>
+            <span class="resource-badge">1.8 GB</span>
+        </a>
+        <a href="https://drive.google.com/uc?export=download&id=1example4" class="resource-card">
+            <div class="resource-icon">💉</div>
+            <div class="resource-title">Web Pentest</div>
+            <div class="resource-desc">Payloads XSS/SQLi</div>
+            <span class="resource-badge">320 MB</span>
+        </a>
+    </div>
+    
+    <div class="section-title">⚡ Acciones Rápidas</div>
+    <div class="action-list">
+        <a href="#" class="action-item" onclick="goToBot('labs')">
+            <div class="action-icon green">🧪</div>
+            <div class="action-content">
+                <div class="action-title">Laboratorios</div>
+                <div class="action-subtitle">Practica en entornos reales</div>
+            </div>
+            <span class="action-arrow">›</span>
+        </a>
+        <a href="#" class="action-item" onclick="goToBot('learning')">
+            <div class="action-icon blue">📚</div>
+            <div class="action-content">
+                <div class="action-title">Mi Ruta de Aprendizaje</div>
+                <div class="action-subtitle">Continúa tu entrenamiento</div>
+            </div>
+            <span class="action-arrow">›</span>
+        </a>
+        <a href="#" class="action-item" onclick="goToBot('ai')">
+            <div class="action-icon purple">🤖</div>
+            <div class="action-content">
+                <div class="action-title">Asistente IA</div>
+                <div class="action-subtitle">Pregunta lo que quieras</div>
+            </div>
+            <span class="action-arrow">›</span>
+        </a>
+    </div>
+    
+    <div class="bottom-bar">
+        <button class="bottom-btn secondary" onclick="closeApp()">Cerrar</button>
+        <button class="bottom-btn primary" onclick="goToBot('menu')">📱 Ir al Bot</button>
+    </div>
+    
+    <script>
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        
+        function goToBot(action) {
+            if (tg) {
+                tg.close();
+            }
+        }
+        
+        function closeApp() {
+            if (tg) tg.close();
+        }
+        
+        // Handle resource downloads
+        document.querySelectorAll('.resource-card').forEach(function(card) {
+            card.addEventListener('click', function(e) {
+                var url = this.getAttribute('href');
+                if (url && tg) {
+                    e.preventDefault();
+                    tg.openLink(url);
+                }
+            });
+        });
+    </script>
+</body>
+</html>"""
 
 # 2. VALIDATION LOGIC
 def validate_telegram_data(init_data: str) -> dict | None:
@@ -634,35 +1058,35 @@ async def webapp_entry():
     return HTMLResponse(content=HTML_LOADER, media_type="text/html; charset=utf-8")
 
 import time
-import base64
 
-def create_token(user_id: int) -> str:
+def create_token(user_id: int, is_premium: bool = False) -> str:
     """Creates a temporary signed token for the dashboard."""
     timestamp = int(time.time())
-    payload = f"{user_id}:{timestamp}"
+    status = "1" if is_premium else "0"
+    payload = f"{user_id}:{timestamp}:{status}"
     signature = hmac.new(TELEGRAM_BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
     return f"{payload}:{signature}"
 
-def verify_token(token: str) -> int | None:
-    """Verifies the token and returns user_id if valid and not expired."""
+def verify_token(token: str) -> tuple:
+    """Verifies the token and returns (user_id, is_premium) if valid and not expired."""
     try:
         parts = token.split(':')
-        if len(parts) != 3: return None
-        user_id_str, timestamp_str, signature = parts
+        if len(parts) != 4: return None, False
+        user_id_str, timestamp_str, status, signature = parts
         
-        # Check expiry (valid for 60 seconds)
-        if int(time.time()) - int(timestamp_str) > 60:
-            return None
+        # Check expiry (valid for 5 minutes for dashboard)
+        if int(time.time()) - int(timestamp_str) > 300:
+            return None, False
             
         # Verify signature
-        payload = f"{user_id_str}:{timestamp_str}"
+        payload = f"{user_id_str}:{timestamp_str}:{status}"
         expected_signature = hmac.new(TELEGRAM_BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
         
         if hmac.compare_digest(signature, expected_signature):
-            return int(user_id_str)
-        return None
+            return int(user_id_str), status == "1"
+        return None, False
     except Exception:
-        return None
+        return None, False
 
 @app.post("/webapp/check")
 async def webapp_check(request: Request):
@@ -673,62 +1097,92 @@ async def webapp_check(request: Request):
         user_data = validate_telegram_data(init_data)
         
         if not user_data:
-            return {"error": "Invalid data"}
+            return {"error": "Datos de sesión inválidos"}
             
         user_id = user_data.get('id')
+        user_first_name = user_data.get('first_name', 'Usuario')
         
-        # Check Supabase Subscription
-        from database_manager import supabase
-        res = supabase.table('usuarios').select('premium_until').eq('user_id', user_id).execute()
+        # Register user if not exists
+        from database_manager import register_user_if_not_exists
+        await register_user_if_not_exists(user_id, first_name=user_first_name)
         
-        is_premium = False
-        if res.data:
-            premium_until_str = res.data[0].get('premium_until')
-            if premium_until_str:
-                try:
-                    expiry = datetime.fromisoformat(premium_until_str.replace('Z', '+00:00'))
-                    if expiry > datetime.now(expiry.tzinfo):
-                        is_premium = True
-                except Exception:
-                    pass
+        # Check Subscription using the correct fields
+        from database_manager import is_user_subscribed
+        is_premium = await is_user_subscribed(user_id)
+        
+        # Create token with premium status
+        token = create_token(user_id, is_premium)
         
         if is_premium:
-            token = create_token(user_id)
             return {"redirect_url": f"/webapp/dashboard?token={token}"}
         else:
-            # For non-premium, we can also redirect to a "No Premium" page or just return error
-            # Let's redirect to dashboard but dashboard will show NO PREMIUM if token is valid but user is not?
-            # Actually, let's just use the same token mechanism. The dashboard will re-check or we encode status in token?
-            # Better: The dashboard re-checks DB? Or we trust the token means "Authenticated".
-            # But we need to show different HTML.
-            # Let's encode "is_premium" in the token? No, keep it simple.
-            # If not premium, return a special parameter or just redirect to a different route?
-            # Let's just redirect to dashboard and let dashboard check DB again? It's safer but slower.
-            # Optimization: Encode status in token: `user_id:timestamp:status:signature`
-            
-            # Simple approach: If not premium, return error to loader?
-            # The loader shows "Access Denied".
-            # But we want to show the "Upsell" page (HTML_NO_PREMIUM).
-            # So we should redirect to /webapp/upsell?
-            return {"redirect_url": f"/webapp/upsell"}
+            return {"redirect_url": f"/webapp/upsell?token={token}"}
             
     except Exception as e:
         logger.exception(f"Webapp check error: {e}")
-        return {"error": str(e)}
+        return {"error": "Error de servidor"}
 
 @app.get("/webapp/dashboard", response_class=HTMLResponse)
 async def webapp_dashboard(token: str):
-    """Serves the Premium Dashboard if token is valid."""
-    user_id = verify_token(token)
-    if not user_id:
-        return HTMLResponse(content="<h1>403 Forbidden - Invalid or Expired Token</h1>", status_code=403, media_type="text/html; charset=utf-8")
+    """Serves the Premium Dashboard if token is valid and user is premium."""
+    user_id, is_premium = verify_token(token)
     
-    # Optional: Fetch user name from DB or pass it in token (encoding issues).
-    # We'll just say "Elite Member".
-    return HTMLResponse(content=HTML_PREMIUM.format(user_name="Elite Member"), media_type="text/html; charset=utf-8")
+    if not user_id:
+        return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2><p style='color:#708499'>Vuelve a abrir la app desde el bot</p></div></body></html>", status_code=403, media_type="text/html; charset=utf-8")
+    
+    if not is_premium:
+        # Redirect to upsell
+        return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+    
+    # Fetch user data from Supabase
+    from database_manager import get_user_profile, get_user_credits, get_user_completed_modules
+    
+    profile = await get_user_profile(user_id)
+    credits = await get_user_credits(user_id)
+    completed_modules = await get_user_completed_modules(user_id)
+    
+    user_name = profile.get('first_name', 'Elite') or 'Elite'
+    user_initial = user_name[0].upper() if user_name else 'E'
+    
+    # Calculate days left
+    days_left = 0
+    expiry_str = profile.get('subscription_expiry_date')
+    if expiry_str:
+        try:
+            expiry = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+            now = datetime.now(expiry.tzinfo)
+            delta = expiry - now
+            days_left = max(0, delta.days)
+        except:
+            pass
+    
+    html = HTML_PREMIUM.format(
+        user_name=user_name,
+        user_initial=user_initial,
+        modules_completed=len(completed_modules),
+        credits=credits,
+        days_left=days_left
+    )
+    
+    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
 
 @app.get("/webapp/upsell", response_class=HTMLResponse)
-async def webapp_upsell():
-    """Serves the No Premium page."""
-    return HTMLResponse(content=HTML_NO_PREMIUM, media_type="text/html; charset=utf-8")
-
+async def webapp_upsell(token: str = ""):
+    """Serves the subscription page for non-premium users."""
+    user_id = None
+    if token:
+        user_id, _ = verify_token(token)
+    
+    # Generate payment URL if we have a user_id
+    payment_url = "#"
+    if user_id:
+        from nowpayments_handler import create_payment_invoice
+        invoice = create_payment_invoice(10.0, user_id, "subscription")
+        if invoice and invoice.get('invoice_url'):
+            payment_url = invoice['invoice_url']
+            # Store pending subscription
+            from database_manager import set_subscription_pending
+            await set_subscription_pending(user_id, invoice.get('invoice_id', ''))
+    
+    html = HTML_NO_PREMIUM.replace("{payment_url}", payment_url)
+    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
