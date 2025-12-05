@@ -456,28 +456,17 @@ HTML_LOADER = """
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({initData: data})
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.html) {
-                    // Decode HTML entities to prevent raw code display
-                    const txt = document.createElement("textarea");
-                    txt.innerHTML = data.html;
-                    const decodedHtml = txt.value;
-
-                    // Use srcdoc with decoded HTML
-                    document.body.innerHTML = ''; // Clear loader
-                    const iframe = document.createElement('iframe');
-                    iframe.style.position = 'fixed';
-                    iframe.style.top = '0';
-                    iframe.style.left = '0';
-                    iframe.style.width = '100%';
-                    iframe.style.height = '100%';
-                    iframe.style.border = 'none';
-                    iframe.style.zIndex = '9999';
-                    iframe.srcdoc = decodedHtml;
-                    document.body.appendChild(iframe);
+            .then(response => {
+                if (!response.ok) throw new Error("Server error");
+                return response.text();
+            })
+            .then(html => {
+                if (html.includes("<!DOCTYPE html>")) {
+                    document.open();
+                    document.write(html);
+                    document.close();
                 } else {
-                    document.body.innerHTML = "<h3 style='color:red'>Error loading content.</h3>";
+                    document.body.innerHTML = "<h3 style='color:red'>Access Denied</h3>";
                 }
             })
             .catch(err => {
@@ -648,7 +637,7 @@ async def webapp_entry():
     """Serves the loader which POSTs initData to /webapp/check for secure validation."""
     return HTML_LOADER
 
-@app.post("/webapp/check")
+@app.post("/webapp/check", response_class=HTMLResponse)
 async def webapp_check(request: Request):
     """Validates initData and returns the appropriate HTML (Premium vs No Premium)."""
     try:
@@ -657,7 +646,7 @@ async def webapp_check(request: Request):
         user_data = validate_telegram_data(init_data)
         
         if not user_data:
-            return {"html": HTML_NO_PREMIUM} # Invalid hash
+            return HTMLResponse(content=HTML_NO_PREMIUM, status_code=403)
             
         user_id = user_data.get('id')
         first_name = user_data.get('first_name', 'Hacker')
@@ -682,11 +671,11 @@ async def webapp_check(request: Request):
         
         if is_premium:
             # Inject user name into template
-            return {"html": HTML_PREMIUM.format(user_name=first_name)}
+            return HTMLResponse(content=HTML_PREMIUM.format(user_name=first_name))
         else:
-            return {"html": HTML_NO_PREMIUM}
+            return HTMLResponse(content=HTML_NO_PREMIUM)
             
     except Exception as e:
         logger.exception(f"Webapp check error: {e}")
-        return {"html": HTML_NO_PREMIUM}
+        return HTMLResponse(content=HTML_NO_PREMIUM, status_code=500)
 
