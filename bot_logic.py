@@ -1,13 +1,14 @@
 import logging
 import requests  # Added for URL validation
 import html
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatAction
 from database_manager import get_user_credits, deduct_credit, get_user_profile, register_user_if_not_exists, is_user_subscribed, set_subscription_pending, add_xp
 from learning_manager import get_user_learning, add_experience, complete_lesson
 from ai_handler import get_ai_response
 from nowpayments_handler import create_payment_invoice
+from config import TELEGRAM_WEBHOOK_URL
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,8 @@ def is_url_valid(url: str) -> bool:
 MAIN_MENU = [
     [KeyboardButton("🚀 Mi Ruta de Aprendizaje"), KeyboardButton("🧪 Laboratorios Prácticos")],
     [KeyboardButton("🛒 Tienda / Recargas"), KeyboardButton("⚙️ Mi Cuenta")],
-    [KeyboardButton("👥 Comunidad"), KeyboardButton("🛠️ Tools")]
+    [KeyboardButton("👥 Comunidad"), KeyboardButton("🛠️ Tools")],
+    [KeyboardButton("🌟 Web App Premium", web_app=WebAppInfo(url=f"{TELEGRAM_WEBHOOK_URL}/webapp"))]
 ]
 
 TOOLS_MENU = [

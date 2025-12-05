@@ -382,3 +382,256 @@ if __name__ == '__main__':
     workers = int(os.getenv('UVICORN_WORKERS', '1'))
     logger.info('Starting uvicorn with host=%s port=%s workers=%s log_level=%s', host, port, workers, LOG_LEVEL)
     uvicorn.run('main:app', host=host, port=port, log_level=LOG_LEVEL.lower(), workers=workers)
+
+# --- WEB APP PREMIUM IMPLEMENTATION ---
+from fastapi.responses import HTMLResponse
+import hmac
+import hashlib
+import urllib.parse
+from datetime import datetime
+
+# 1. HTML TEMPLATES
+HTML_LOADER = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaliRoot Premium</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { background-color: #000; color: #06D6A0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: monospace; }
+        .loader { border: 4px solid #333; border-top: 4px solid #06D6A0; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <script>
+        const initData = window.Telegram.WebApp.initData;
+        if (!initData) {
+            document.body.innerHTML = "<h3 style='color:red'>Error: No InitData found. Open from Telegram.</h3>";
+        } else {
+            fetch('/webapp/check', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({initData: initData})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.html) {
+                    document.open();
+                    document.write(data.html);
+                    document.close();
+                } else {
+                    document.body.innerHTML = "<h3 style='color:red'>Error loading content.</h3>";
+                }
+            })
+            .catch(err => {
+                document.body.innerHTML = "<h3 style='color:red'>Connection Error</h3>";
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+
+HTML_NO_PREMIUM = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Denegado</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Orbitron', sans-serif; background-color: #000; }
+        .neon-text { text-shadow: 0 0 10px #8B5CF6, 0 0 20px #8B5CF6; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center h-screen p-4 text-center">
+    <div class="mb-8">
+        <!-- Placeholder Dragon/Lock Icon -->
+        <svg class="w-32 h-32 text-purple-500 mx-auto animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+    </div>
+    <h1 class="text-4xl font-bold text-white mb-2 neon-text">ACCESO DENEGADO</h1>
+    <p class="text-gray-400 mb-8 max-w-xs">Esta zona es exclusiva para miembros <b>Elite Premium</b>. Tu suscripción no está activa.</p>
+    
+    <button onclick="Telegram.WebApp.openTelegramLink('https://t.me/KalyRootAiBot?start=premium'); Telegram.WebApp.close();" 
+            class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all transform hover:scale-105">
+        💎 ACTIVAR PREMIUM AHORA
+    </button>
+</body>
+</html>
+"""
+
+HTML_PREMIUM = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaliRoot Elite Dashboard</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Rajdhani', sans-serif; background-color: #050505; color: #fff; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(6, 214, 160, 0.2); border-color: #06D6A0; }
+        .cyan-glow { text-shadow: 0 0 10px #06D6A0; }
+    </style>
+</head>
+<body class="p-4 pb-20">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-400 flex items-center justify-center font-bold text-lg">K</div>
+            <div>
+                <h2 class="text-xl font-bold leading-none">{user_name}</h2>
+                <span class="text-xs text-cyan-400 tracking-widest uppercase">Elite Member</span>
+            </div>
+        </div>
+        <button onclick="Telegram.WebApp.close()" class="text-gray-500 hover:text-white">✕</button>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-6 cyan-glow">PREMIUM ASSETS</h1>
+
+    <!-- Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Card 1 -->
+        <div class="glass p-4 rounded-xl card-hover transition-all duration-300 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 bg-purple-600 text-xs px-2 py-1 rounded-bl-lg">HOT</div>
+            <h3 class="text-xl font-bold text-white mb-1">Kali Linux Ultimate Pack</h3>
+            <p class="text-gray-400 text-sm mb-4">Configuraciones, dotfiles y scripts esenciales pre-instalados.</p>
+            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_1" class="block w-full text-center bg-cyan-500 hover:bg-cyan-600 text-black font-bold py-2 rounded-lg transition-colors">
+                📥 DESCARGAR .ZIP
+            </a>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
+            <h3 class="text-xl font-bold text-white mb-1">Termux Elite Scripts</h3>
+            <p class="text-gray-400 text-sm mb-4">Automatización de ataques y setup de entorno móvil.</p>
+            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_2" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
+                📥 DESCARGAR .ZIP
+            </a>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
+            <h3 class="text-xl font-bold text-white mb-1">Wi-Fi Hacking Toolkit</h3>
+            <p class="text-gray-400 text-sm mb-4">Wordlists optimizadas y scripts de desautenticación.</p>
+            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_3" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
+                📥 DESCARGAR .ZIP
+            </a>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
+            <h3 class="text-xl font-bold text-white mb-1">Web Pentest Suite</h3>
+            <p class="text-gray-400 text-sm mb-4">Payloads XSS/SQLi y plantillas de reportes.</p>
+            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_4" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
+                📥 DESCARGAR .ZIP
+            </a>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
+            <h3 class="text-xl font-bold text-white mb-1">Anonimato & Tor Bundle</h3>
+            <p class="text-gray-400 text-sm mb-4">Configuraciones de proxychains y VPNs seguras.</p>
+            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_5" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
+                📥 DESCARGAR .ZIP
+            </a>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="glass p-4 rounded-xl card-hover transition-all duration-300">
+            <h3 class="text-xl font-bold text-white mb-1">Exploit Database Offline</h3>
+            <p class="text-gray-400 text-sm mb-4">Base de datos local de exploits buscable.</p>
+            <a href="https://drive.google.com/uc?export=download&id=FILE_ID_6" class="block w-full text-center bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white font-bold py-2 rounded-lg transition-colors">
+                📥 DESCARGAR .ZIP
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+    </script>
+</body>
+</html>
+"""
+
+# 2. VALIDATION LOGIC
+def validate_telegram_data(init_data: str) -> dict | None:
+    """Validates the initData string from Telegram Web App."""
+    if not init_data: return None
+    try:
+        parsed_data = dict(urllib.parse.parse_qsl(init_data))
+        if 'hash' not in parsed_data: return None
+        
+        hash_check = parsed_data.pop('hash')
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed_data.items()))
+        
+        secret_key = hmac.new(b"WebAppData", TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
+        calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        
+        if calculated_hash == hash_check:
+            return json.loads(parsed_data.get('user', '{}'))
+        return None
+    except Exception as e:
+        logger.error(f"Validation error: {e}")
+        return None
+
+# 3. ROUTES
+@app.get("/webapp", response_class=HTMLResponse)
+async def webapp_entry():
+    """Serves the loader which POSTs initData to /webapp/check for secure validation."""
+    return HTML_LOADER
+
+@app.post("/webapp/check")
+async def webapp_check(request: Request):
+    """Validates initData and returns the appropriate HTML (Premium vs No Premium)."""
+    try:
+        data = await request.json()
+        init_data = data.get('initData')
+        user_data = validate_telegram_data(init_data)
+        
+        if not user_data:
+            return {"html": HTML_NO_PREMIUM} # Invalid hash
+            
+        user_id = user_data.get('id')
+        first_name = user_data.get('first_name', 'Hacker')
+        
+        # Check Supabase Subscription
+        from database_manager import supabase
+        # We need to check if premium_until > now
+        # Supabase query: select premium_until from users where user_id = ...
+        res = supabase.table('usuarios').select('premium_until').eq('user_id', user_id).execute()
+        
+        is_premium = False
+        if res.data:
+            premium_until_str = res.data[0].get('premium_until')
+            if premium_until_str:
+                # Parse timestamp (ISO format)
+                try:
+                    expiry = datetime.fromisoformat(premium_until_str.replace('Z', '+00:00'))
+                    if expiry > datetime.now(expiry.tzinfo):
+                        is_premium = True
+                except Exception:
+                    pass
+        
+        if is_premium:
+            # Inject user name into template
+            return {"html": HTML_PREMIUM.format(user_name=first_name)}
+        else:
+            return {"html": HTML_NO_PREMIUM}
+            
+    except Exception as e:
+        logger.exception(f"Webapp check error: {e}")
+        return {"html": HTML_NO_PREMIUM}
+

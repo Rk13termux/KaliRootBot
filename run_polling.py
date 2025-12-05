@@ -4,8 +4,8 @@ Run the bot in polling mode for local development. This script uses the Applicat
 registers the `handle_message` message handler for simple testing.
 """
 import logging
-from telegram.ext import Application, MessageHandler, CommandHandler, filters
-from bot_logic import handle_message
+from telegram.ext import Application, MessageHandler, CommandHandler, CallbackQueryHandler, filters
+from bot_logic import handle_message, handle_callback
 from config import TELEGRAM_BOT_TOKEN
 import sys
 import logging
@@ -63,6 +63,7 @@ def run():
             logger.exception('Failed to inspect/delete webhook automatically: %s', e)
     app.add_handler(CommandHandler('start', handle_message))
     app.add_handler(CommandHandler('comprar', handle_message))
+    app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     # Perform a synchronous connectivity check to Telegram before starting polling
     try:
