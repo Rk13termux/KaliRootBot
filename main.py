@@ -459,20 +459,22 @@ HTML_LOADER = """
             .then(response => response.json())
             .then(data => {
                 if (data.html) {
-                    // Replace the entire document content
-                    const parser = new DOMParser();
-                    const newDoc = parser.parseFromString(data.html, 'text/html');
+                    // Use iframe to ensure proper rendering and isolation
+                    document.body.innerHTML = ''; // Clear loader
+                    const iframe = document.createElement('iframe');
+                    iframe.style.position = 'fixed';
+                    iframe.style.top = '0';
+                    iframe.style.left = '0';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.style.zIndex = '9999';
+                    document.body.appendChild(iframe);
                     
-                    document.head.innerHTML = newDoc.head.innerHTML;
-                    document.body.innerHTML = newDoc.body.innerHTML;
-
-                    // Re-execute scripts in the new body
-                    Array.from(document.body.querySelectorAll('script')).forEach(oldScript => {
-                        const newScript = document.createElement('script');
-                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
+                    const doc = iframe.contentWindow.document;
+                    doc.open();
+                    doc.write(data.html);
+                    doc.close();
                 } else {
                     document.body.innerHTML = "<h3 style='color:red'>Error loading content.</h3>";
                 }
