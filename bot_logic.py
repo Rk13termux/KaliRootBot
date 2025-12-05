@@ -1269,17 +1269,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     SCRIPT_STORE[script_id] = {'filename': filename, 'content': script_content}
                     
                     buttons.append([InlineKeyboardButton(f"📥 Descargar {filename}", callback_data=f"dl_script_{script_id}")])
-                    
-                    # Remove the tag from text
-                    clean_response = clean_response.replace(script_match.group(0), "")
+                
+                # ALWAYS remove the [[SCRIPT:...]] tag from text (whether or not code was found)
+                clean_response = clean_response.replace(script_match.group(0), "")
 
 
             # Find all [[BUTTON: Label | URL]] patterns
             # Regex handles optional whitespace and potential markdown/HTML noise around the tag
             matches = re.findall(r"\[\[BUTTON:\s*(.*?)\s*\|\s*(.*?)\]\]", respuesta)
             
+            # Limit buttons to max 3 to avoid spam
+            MAX_BUTTONS = 3
+            button_count = 0
+            
             if matches:
                 for label, url in matches:
+                    if button_count >= MAX_BUTTONS:
+                        break
+                        
                     # Clean URL and Label
                     # Remove any HTML tags from URL (e.g. <code>nmap</code> -> nmap)
                     url = re.sub(r'<[^>]+>', '', url).strip()
@@ -1291,9 +1298,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if url not in seen_urls and is_url_valid(url): # Validate URL here too!
                         buttons.append([InlineKeyboardButton(label, url=url)])
                         seen_urls.add(url)
+                        button_count += 1
                 
-                # Remove the button tags from the visible text
-                clean_response = re.sub(r"\[\[BUTTON:.*?\]\]", "", respuesta).strip()
+                # Remove ALL button tags from the visible text
+                clean_response = re.sub(r"\[\[BUTTON:.*?\]\]", "", clean_response).strip()
 
             reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
             
