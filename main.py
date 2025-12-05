@@ -459,7 +459,10 @@ HTML_LOADER = """
             .then(response => response.json())
             .then(data => {
                 if (data.html) {
-                    // Use iframe to ensure proper rendering and isolation
+                    // Use Blob to force HTML rendering
+                    const blob = new Blob([data.html], {type: 'text/html'});
+                    const url = URL.createObjectURL(blob);
+                    
                     document.body.innerHTML = ''; // Clear loader
                     const iframe = document.createElement('iframe');
                     iframe.style.position = 'fixed';
@@ -469,12 +472,8 @@ HTML_LOADER = """
                     iframe.style.height = '100%';
                     iframe.style.border = 'none';
                     iframe.style.zIndex = '9999';
+                    iframe.src = url;
                     document.body.appendChild(iframe);
-                    
-                    const doc = iframe.contentWindow.document;
-                    doc.open();
-                    doc.write(data.html);
-                    doc.close();
                 } else {
                     document.body.innerHTML = "<h3 style='color:red'>Error loading content.</h3>";
                 }
