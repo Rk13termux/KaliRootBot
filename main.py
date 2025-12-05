@@ -708,16 +708,35 @@ HTML_NO_PREMIUM = """<!DOCTYPE html>
         if (tg) { tg.ready(); tg.expand(); }
         
         document.getElementById('payBtn').addEventListener('click', function(e) {
+            e.preventDefault();
             var url = this.getAttribute('href');
-            if (url && url !== '#' && url !== '{payment_url}') {
-                if (tg) {
-                    tg.openLink(url);
+            
+            // Check if we have a valid payment URL
+            if (url && url.length > 0 && !url.includes('{payment_url}')) {
+                if (url.startsWith('tg://') || url.includes('t.me/')) {
+                    // Telegram deep link - open in Telegram
+                    if (tg) {
+                        tg.openTelegramLink(url.replace('tg://resolve?domain=', 'https://t.me/').replace('&', '?'));
+                        setTimeout(function() { tg.close(); }, 500);
+                    } else {
+                        window.location.href = url;
+                    }
+                } else if (url.startsWith('http')) {
+                    // External URL (NOWPayments) - open in browser
+                    if (tg) {
+                        tg.openLink(url);
+                    } else {
+                        window.open(url, '_blank');
+                    }
                 }
             } else {
-                e.preventDefault();
+                // No valid URL - redirect to bot
                 if (tg) {
-                    tg.showAlert('Para suscribirte, usa el comando /suscribirse en el bot.');
-                    setTimeout(function() { tg.close(); }, 2000);
+                    tg.showAlert('Redirigiendo al bot para suscripción...');
+                    setTimeout(function() {
+                        tg.openTelegramLink('https://t.me/KalyRootAiBot?start=premium');
+                        tg.close();
+                    }, 1000);
                 }
             }
         });
@@ -1125,64 +1144,99 @@ async def webapp_check(request: Request):
 @app.get("/webapp/dashboard", response_class=HTMLResponse)
 async def webapp_dashboard(token: str):
     """Serves the Premium Dashboard if token is valid and user is premium."""
-    user_id, is_premium = verify_token(token)
-    
-    if not user_id:
-        return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2><p style='color:#708499'>Vuelve a abrir la app desde el bot</p></div></body></html>", status_code=403, media_type="text/html; charset=utf-8")
-    
-    if not is_premium:
-        # Redirect to upsell
-        return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
-    
-    # Fetch user data from Supabase
-    from database_manager import get_user_profile, get_user_credits, get_user_completed_modules
-    
-    profile = await get_user_profile(user_id)
-    credits = await get_user_credits(user_id)
-    completed_modules = await get_user_completed_modules(user_id)
-    
-    user_name = profile.get('first_name', 'Elite') or 'Elite'
-    user_initial = user_name[0].upper() if user_name else 'E'
-    
-    # Calculate days left
-    days_left = 0
-    expiry_str = profile.get('subscription_expiry_date')
-    if expiry_str:
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2><p style='color:#708499'>Vuelve a abrir la app desde el bot</p></div></body></html>", status_code=403, media_type="text/html; charset=utf-8")
+        
+        if not is_premium:
+            # Redirect to upsell
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        # Fetch user data from Supabase with error handling
+        user_name = "Elite"
+        user_initial = "E"
+        credits = 0
+        completed_modules = []
+        days_left = 0
+        
         try:
-            expiry = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
-            now = datetime.now(expiry.tzinfo)
-            delta = expiry - now
-            days_left = max(0, delta.days)
-        except:
-            pass
-    
-    html = HTML_PREMIUM.format(
-        user_name=user_name,
-        user_initial=user_initial,
-        modules_completed=len(completed_modules),
-        credits=credits,
-        days_left=days_left
-    )
-    
-    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+            from database_manager import get_user_profile, get_user_credits, get_user_completed_modules
+            
+            profile = await get_user_profile(user_id)
+            if profile:
+                user_name = profile.get('first_name') or 'Elite'
+                user_initial = user_name[0].upper() if user_name else 'E'
+                
+                # Calculate days left
+                expiry_str = profile.get('subscription_expiry_date')
+                if expiry_str:
+                    try:
+                        expiry = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+                        now = datetime.now(expiry.tzinfo)
+                        delta = expiry - now
+                        days_left = max(0, delta.days)
+                    except:
+                        days_left = 30  # Default
+            
+            credits = await get_user_credits(user_id) or 0
+            completed_modules = await get_user_completed_modules(user_id) or []
+            
+        except Exception as e:
+            logger.error(f"Error fetching user data for dashboard: {e}")
+            # Continue with default values
+        
+        html = HTML_PREMIUM.format(
+            user_name=user_name,
+            user_initial=user_initial,
+            modules_completed=len(completed_modules),
+            credits=credits,
+            days_left=days_left
+        )
+        
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Dashboard error: {e}")
+        return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Error</h2><p style='color:#708499'>Intenta abrir la app de nuevo</p></div></body></html>", status_code=500, media_type="text/html; charset=utf-8")
 
 @app.get("/webapp/upsell", response_class=HTMLResponse)
 async def webapp_upsell(token: str = ""):
     """Serves the subscription page for non-premium users."""
-    user_id = None
-    if token:
-        user_id, _ = verify_token(token)
-    
-    # Generate payment URL if we have a user_id
-    payment_url = "#"
-    if user_id:
-        from nowpayments_handler import create_payment_invoice
-        invoice = create_payment_invoice(10.0, user_id, "subscription")
-        if invoice and invoice.get('invoice_url'):
-            payment_url = invoice['invoice_url']
-            # Store pending subscription
-            from database_manager import set_subscription_pending
-            await set_subscription_pending(user_id, invoice.get('invoice_id', ''))
-    
-    html = HTML_NO_PREMIUM.replace("{payment_url}", payment_url)
-    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+    try:
+        user_id = None
+        if token:
+            user_id, _ = verify_token(token)
+        
+        # Generate payment URL if we have a user_id
+        payment_url = ""
+        
+        if user_id:
+            try:
+                from nowpayments_handler import create_payment_invoice
+                invoice = create_payment_invoice(10.0, user_id, "subscription")
+                logger.info(f"Invoice result for user {user_id}: {invoice}")
+                
+                if invoice and invoice.get('invoice_url'):
+                    payment_url = invoice['invoice_url']
+                    # Store pending subscription
+                    try:
+                        from database_manager import set_subscription_pending
+                        await set_subscription_pending(user_id, str(invoice.get('invoice_id', '')))
+                    except Exception as e:
+                        logger.error(f"Error setting pending subscription: {e}")
+            except Exception as e:
+                logger.error(f"Error creating payment invoice: {e}")
+        
+        # If no payment URL, use a fallback that directs to bot
+        if not payment_url:
+            payment_url = "tg://resolve?domain=KalyRootAiBot&start=premium"
+        
+        html = HTML_NO_PREMIUM.replace("{payment_url}", payment_url)
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Upsell page error: {e}")
+        return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Error</h2><p style='color:#708499'>Usa /suscribirse en el bot</p></div></body></html>", status_code=500, media_type="text/html; charset=utf-8")
+
