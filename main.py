@@ -459,9 +459,20 @@ HTML_LOADER = """
             .then(response => response.json())
             .then(data => {
                 if (data.html) {
-                    document.open();
-                    document.write(data.html);
-                    document.close();
+                    // Replace the entire document content
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(data.html, 'text/html');
+                    
+                    document.head.innerHTML = newDoc.head.innerHTML;
+                    document.body.innerHTML = newDoc.body.innerHTML;
+
+                    // Re-execute scripts in the new body
+                    Array.from(document.body.querySelectorAll('script')).forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
                 } else {
                     document.body.innerHTML = "<h3 style='color:red'>Error loading content.</h3>";
                 }
