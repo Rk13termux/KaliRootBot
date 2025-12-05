@@ -94,7 +94,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- COMMANDS ---
     if text.strip().split()[0].startswith("/start"):
-        # No cleaning here
+        # Delete the /start message from user to keep chat clean
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.debug(f"Could not delete /start message: {e}")
+        
         first_name = update.effective_user.first_name
         last_name = update.effective_user.last_name
         username = update.effective_user.username
@@ -107,12 +112,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         # Welcome Image
         try:
-            with open('assets/welcome.jpg', 'rb') as img:
-                await update.message.reply_photo(img, caption=welcome_msg, reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True), parse_mode=ParseMode.HTML)
+            with open('assets/portada.jpg', 'rb') as img:
+                await context.bot.send_photo(
+                    chat_id=update.effective_chat.id,
+                    photo=img,
+                    caption=welcome_msg,
+                    reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True),
+                    parse_mode=ParseMode.HTML
+                )
         except Exception as e:
             logger.error(f"Error sending welcome image: {e}")
             # Fallback to text only
-            await send_menu(update, welcome_msg, MAIN_MENU)
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=welcome_msg,
+                reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True),
+                parse_mode=ParseMode.HTML
+            )
         return
 
     if text == "/suscribirse" or text == "/comprar" or text == "🚀 Ver Planes de Suscripción":
