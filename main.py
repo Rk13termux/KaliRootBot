@@ -628,7 +628,7 @@ def validate_telegram_data(init_data: str) -> dict | None:
         return None
 
 # 3. ROUTES
-@app.get("/webapp", response_class=HTMLResponse)
+@app.get("/webapp_v2", response_class=HTMLResponse)
 async def webapp_entry():
     """Serves the loader which POSTs initData to /webapp/check for secure validation."""
     return HTML_LOADER
