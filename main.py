@@ -1756,289 +1756,155 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Módulo {module_id} - KaliRoot</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --accent: #e94560;
+            --text: #ffffff;
+            --text-sec: #b2b2b2;
+            --code-bg: #0f3460;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #17212b);
-            color: var(--tg-theme-text-color, #ffffff);
-            min-height: 100vh;
-            padding-bottom: 140px;
+            background: var(--bg-color);
+            color: var(--text);
+            padding-bottom: 100px;
         }
         
         .module-hero {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            padding: 24px 16px;
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            padding: 30px 20px;
             text-align: center;
-            position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         .module-badge {
-            display: inline-block;
-            background: rgba(51, 144, 236, 0.2);
-            color: var(--tg-theme-button-color, #3390ec);
-            font-size: 12px;
-            font-weight: 600;
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+            font-size: 11px;
+            font-weight: 700;
             padding: 4px 12px;
             border-radius: 20px;
-            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+            margin-bottom: 10px;
         }
         .module-badge.completed {
             background: rgba(74, 222, 128, 0.2);
             color: #4ade80;
         }
-        .module-hero h1 {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .module-hero-desc {
-            color: var(--tg-theme-hint-color, #708499);
-            font-size: 14px;
-        }
+        h1 { font-size: 22px; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+        .hero-desc { color: var(--text-sec); font-size: 14px; }
         
-        .content-section {
-            padding: 20px 16px;
-        }
+        /* AI Content Styles */
+        #ai-content { padding: 20px; min-height: 200px; }
+        
+        .content-block { margin-bottom: 25px; animation: fadeIn 0.5s ease; }
         .section-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--tg-theme-hint-color, #708499);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-        }
-        
-        .lesson-card {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-radius: 12px;
-            padding: 16px;
+            color: #3390ec;
+            font-size: 16px;
+            font-weight: 700;
             margin-bottom: 12px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            color: inherit;
-        }
-        .lesson-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            background: rgba(51, 144, 236, 0.15);
-        }
-        .lesson-info { flex: 1; }
-        .lesson-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-        .lesson-meta { 
-            font-size: 12px; 
-            color: var(--tg-theme-hint-color, #708499);
-        }
-        .lesson-arrow { 
-            color: var(--tg-theme-hint-color, #708499); 
-            font-size: 18px; 
-        }
-        
-        .info-box {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-radius: 12px;
-            padding: 16px;
-            border-left: 4px solid var(--tg-theme-button-color, #3390ec);
-        }
-        .info-box p {
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        
-        .objectives-list {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-radius: 12px;
-            padding: 16px 16px 16px 32px;
-            margin: 0;
-        }
-        .objectives-list li {
-            font-size: 14px;
-            line-height: 1.8;
-            color: var(--tg-theme-text-color, #ffffff);
-            margin-bottom: 4px;
-        }
-        .objectives-list li::marker {
-            color: #4ade80;
-        }
-        
-        .tags-container {
-            display: flex;
-            flex-wrap: wrap;
             gap: 8px;
         }
-        .concept-tag {
-            background: rgba(139, 92, 246, 0.2);
-            color: #a78bfa;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
+        p { line-height: 1.6; font-size: 15px; color: #e0e0e0; margin-bottom: 10px; }
+        
+        /* Code Blocks */
+        pre {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+            border: 1px solid #30363d;
+            margin: 10px 0;
         }
-        .tool-tag {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            font-family: monospace;
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #58a6ff;
         }
         
+        /* Tip Box */
+        .tip-box {
+            background: rgba(233, 69, 96, 0.1);
+            border-left: 3px solid #e94560;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .tip-title { color: #e94560; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        
+        /* Loading */
+        .loading-container { text-align: center; padding: 40px; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #3390ec;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Actions */
         .bottom-actions {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding: 12px 16px;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(22, 33, 62, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; gap: 10px;
         }
         .action-btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            font-weight: 600; cursor: pointer; font-size: 14px;
+            transition: transform 0.1s;
         }
-        .action-btn.primary {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
-        }
-        .action-btn.success {
-            background: #4ade80;
-            color: #000;
-        }
-        .action-btn.secondary {
-            background: rgba(255,255,255,0.08);
-            color: var(--tg-theme-text-color, #fff);
-        }
-        .action-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .nav-row {
-            display: flex;
-            gap: 8px;
-        }
-        .nav-row .action-btn { flex: 1; margin-bottom: 0; }
+        .action-btn:active { transform: scale(0.98); }
+        .btn-primary { background: #3390ec; color: white; }
+        .btn-success { background: #4ade80; color: #002b10; }
+        .btn-sec { background: rgba(255,255,255,0.1); color: white; }
+        .nav-row { display: flex; gap: 10px; }
         
-        .status-msg {
-            text-align: center;
-            padding: 12px;
-            font-size: 14px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-        .status-msg.success {
-            background: rgba(74, 222, 128, 0.2);
-            color: #4ade80;
-        }
-        .status-msg.error {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
+        .regen-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.2);
+            color: var(--text-sec); padding: 8px 16px; border-radius: 20px;
+            font-size: 12px; margin: 0 auto; display: block; cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div class="module-hero">
-        <div class="module-badge {badge_class}">Módulo {module_id} de 100</div>
+        <div class="module-badge {badge_class}">Módulo {module_id}</div>
         <h1>{module_title}</h1>
-        <p class="module-hero-desc">{module_desc}</p>
+        <p class="hero-desc">{module_desc}</p>
     </div>
-    
-    <div class="content-section">
-        <h2 class="section-title">📖 Contenido de la Lección</h2>
-        <a href="{lesson_link}" class="lesson-card" id="lessonLink" target="_blank">
-            <div class="lesson-icon">📚</div>
-            <div class="lesson-info">
-                <div class="lesson-title">Abrir Lección Completa</div>
-                <div class="lesson-meta">Tutorial detallado paso a paso</div>
-            </div>
-            <span class="lesson-arrow">›</span>
-        </a>
-    </div>
-    
-    {extended_content}
-    
-    <div class="content-section">
-        <h2 class="section-title">💡 Información</h2>
-        <div class="info-box">
-            <p>Este módulo forma parte de <strong>{section_title}</strong>. 
-            Después de estudiar el contenido, marca el módulo como completado para recibir XP y desbloquear el siguiente nivel.</p>
+
+    <div id="ai-content">
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <div style="color: #708499; font-size: 14px;">Contactando con KaliRoot AI...</div>
+            <div style="color: #4a5c6b; font-size: 11px; margin-top: 5px;">Generando lección personalizada</div>
         </div>
     </div>
     
+    <button class="regen-btn" onclick="loadContent(true)">🔄 Regenerar Contenido con IA</button>
+    <div style="height: 60px;"></div>
+
     <div class="bottom-actions">
-        <div id="statusMsg"></div>
-        
+        <div id="statusMsg" style="text-align: center; font-size: 13px; margin-bottom: 5px; display: none;"></div>
         {complete_button}
-        
         <div class="nav-row">
             {prev_button}
             {next_button}
         </div>
     </div>
-    
-    <script>
-        var tg = window.Telegram && window.Telegram.WebApp;
-        if (tg) { tg.ready(); tg.expand(); }
-        
-        var statusMsg = document.getElementById('statusMsg');
-        var completeBtn = document.getElementById('completeBtn');
-        
-        // Handle lesson link click
-        document.getElementById('lessonLink').addEventListener('click', function(e) {
-            var url = this.getAttribute('href');
-            if (url && tg) {
-                e.preventDefault();
-                tg.openLink(url);
-            }
-        });
-        
-        // Handle complete button
-        if (completeBtn) {
-            completeBtn.addEventListener('click', function() {
-                this.disabled = true;
-                this.innerHTML = '⏳ Guardando...';
-                
-                fetch('/api/learning/complete', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        token: '{token}',
-                        module_id: {module_id}
-                    })
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        statusMsg.className = 'status-msg success';
-                        statusMsg.textContent = '🎉 ¡Módulo completado! +' + data.xp + ' XP';
-                        statusMsg.style.display = 'block';
-                        completeBtn.innerHTML = '✅ Completado';
-                        completeBtn.className = 'action-btn success';
-                        
-                        // Redirect to next module after delay
-                        if (data.next_module) {
-                            setTimeout(function() {
-                                window.location.href = '/webapp/learning/module/' + data.next_module + '?token={token}';
-                            }, 1500);
-                        }
-                    } else {
-                        statusMsg.className = 'status-msg error';
                         statusMsg.textContent = data.error || 'Error al guardar progreso';
                         statusMsg.style.display = 'block';
                         completeBtn.disabled = false;
@@ -2501,20 +2367,15 @@ async def webapp_learning_module(module_id: int, token: str = ""):
         else:
             next_button = '<button class="action-btn secondary" disabled>Siguiente →</button>'
         
-        from module_content import generate_module_html
-        extended_content = generate_module_html(module_id)
         
         html = HTML_LEARNING_MODULE.replace("{module_id}", str(module_id))\
             .replace("{module_title}", module['title'])\
             .replace("{module_desc}", module['desc'])\
-            .replace("{lesson_link}", module['link'])\
-            .replace("{section_title}", section['title'])\
             .replace("{badge_class}", badge_class)\
             .replace("{complete_button}", complete_button)\
             .replace("{prev_button}", prev_button)\
             .replace("{next_button}", next_button)\
-            .replace("{token}", token)\
-            .replace("{extended_content}", extended_content)
+            .replace("{token}", token)
         
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
         
@@ -2767,3 +2628,44 @@ async def api_labs_check(request: Request):
     except Exception as e:
         logger.exception(f"Api lab check error: {e}")
         return JSONResponse({"success": False, "error": str(e)})
+
+@app.post("/api/learning/get_content")
+async def api_learning_get_content(request: Request):
+    try:
+        data = await request.json()
+        token = data.get('token')
+        module_id = int(data.get('module_id'))
+        force = data.get('force', False)
+        
+        user_id, is_premium = verify_token(token)
+        if not user_id: return JSONResponse({"success": False, "error": "Sesión expirada"})
+        if not is_premium: return JSONResponse({"success": False, "error": "Requiere Premium"})
+        
+        from ai_learning import generate_lesson
+        
+        # Determine strict timeout/concurrency if needed
+        html_content = await generate_lesson(module_id, force_refresh=force)
+        
+        return JSONResponse({"success": True, "html": html_content})
+    except Exception as e:
+        logger.exception(f"AI Content API error: {e}")
+        return JSONResponse({"success": False, "error": "Error generando contenido"})
+
+@app.get("/webapp/learning/complete_module/{module_id}")
+async def webapp_learning_complete(module_id: int, token: str = ""):
+    try:
+        user_id, is_premium = verify_token(token)
+        if not user_id: return JSONResponse({"ok": False, "error": "Auth failed"})
+        if not is_premium: return JSONResponse({"ok": False, "error": "Premium required"})
+        
+        from database_manager import mark_module_completed, add_xp
+        
+        # Mark in DB
+        result = await mark_module_completed(user_id, module_id)
+        if result:
+            await add_xp(user_id, 20)
+            
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.exception(f"Error completing module: {e}")
+        return JSONResponse({"ok": False, "error": str(e)})

@@ -99,13 +99,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await register_user_if_not_exists(user_id, first_name=first_name, last_name=last_name, username=username)
         
         welcome_msg = (
-            f"¡Bienvenido, <b>{html.escape(first_name or 'Hacker')}</b>! 🕵️‍♂️\n\n"
-            "Soy tu mentor en <b>Kali Linux</b>. Estás a punto de empezar un viaje para dominar las herramientas de los profesionales.\n\n"
-            "¿Listo para desbloquear tu potencial? Elige tu camino:"
+            f"👋 <b>¡Bienvenido al Cuartel General, {html.escape(first_name or 'Agente')}!</b>\n\n"
+            "Has establecido conexión segura con <b>KaliRoot Bot v2.0</b> 🔒\n"
+            "Tu suite definitiva de inteligencia ofensiva y entrenamiento en ciberseguridad.\n\n"
+            
+            "🔻 <b>ACCESO PÚBLICO (Nivel Free):</b>\n"
+            "▫️ 🤖 Asistente IA Básico (Consultas Limitadas)\n"
+            "▫️ 📚 Diccionario de Comandos Linux\n"
+            "▫️ 🛠️ Herramientas de Red Básicas\n"
+            "▫️ 👥 Acceso a la Comunidad Pública\n\n"
+            
+            "💎 <b>ACCESO ÉLITE (Suscripción Premium):</b>\n"
+            "▪️ 🧠 <b>Cerebro God Mode:</b> IA sin censura ni límites.\n"
+            "▪️ 🎓 <b>Academia Hacker:</b> Ruta Zero to Hero con WebApp.\n"
+            "▪️ 🧪 <b>Laboratorios Reales:</b> Simulador de hacking interactivo.\n"
+            "▪️ ☁️ <b>Kali Cloud & Scripts:</b> Recursos VIP exclusivos.\n"
+            "▪️ 🏅 <b>Certificaciones Oficiales:</b> Valida tu nivel.\n\n"
+            
+            "<i>«No busques información, busca superioridad.»</i>\n\n"
+            "👇 <b>INICIA TU OPERACIÓN AHORA:</b>"
         )
         # Welcome Image
         try:
-            with open('assets/portada.jpg', 'rb') as img:
+            with open('assets/welcome.jpg', 'rb') as img:
                 await context.bot.send_photo(
                     chat_id=update.effective_chat.id,
                     photo=img,
