@@ -1905,18 +1905,79 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             {next_button}
         </div>
     </div>
-                        statusMsg.textContent = data.error || 'Error al guardar progreso';
-                        statusMsg.style.display = 'block';
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        const moduleId = {module_id};
+        const token = "{token}";
+        const contentDiv = document.getElementById('ai-content');
+        
+        function loadContent(force = false) {
+            contentDiv.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <div style="color: #708499; font-size: 14px;">${force ? 'Regenerando...' : 'Analizando módulo...'}</div>
+                </div>
+            `;
+            
+            fetch('/api/learning/get_content', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token: token, module_id: moduleId, force: force })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    contentDiv.innerHTML = data.html;
+                } else {
+                    contentDiv.innerHTML = `<div class="tip-box" style="border-color: #ff4757; background: rgba(255, 71, 87, 0.1);">
+                        <div class="tip-title" style="color: #ff4757;">⚠️ Error de Sistema</div>
+                        <p>${data.error}</p>
+                        <button class="regen-btn" onclick="loadContent(true)">Reintentar</button>
+                    </div>`;
+                }
+            })
+            .catch(e => {
+                contentDiv.innerHTML = '<div style="text-align:center; padding: 20px;">Error de conexión.</div>';
+            });
+        }
+        
+        // Initial load
+        loadContent();
+
+        // Complete Logic
+        const completeBtn = document.getElementById('completeBtn');
+        if(completeBtn) {
+            completeBtn.addEventListener('click', () => {
+                const status = document.getElementById('statusMsg');
+                
+                completeBtn.disabled = true;
+                completeBtn.style.opacity = '0.7';
+                completeBtn.innerText = '⌛ Procesando...';
+                
+                fetch('/webapp/learning/complete_module/' + moduleId + '?token=' + token)
+                .then(r => r.json())
+                .then(d => {
+                    if(d.ok) {
+                        status.style.display = 'block';
+                        status.style.color = '#4ade80';
+                        status.innerText = '✅ Módulo completado. +XP';
+                        tg.HapticFeedback.notificationOccurred('success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        status.innerText = '⚠️ Error.';
+                        status.style.display = 'block';
+                        status.style.color = '#ff4757';
                         completeBtn.disabled = false;
-                        completeBtn.innerHTML = '✅ Marcar como Completado';
+                        completeBtn.innerText = '✅ Marcar como Completado';
                     }
                 })
-                .catch(function() {
-                    statusMsg.className = 'status-msg error';
-                    statusMsg.textContent = 'Error de conexión';
-                    statusMsg.style.display = 'block';
+                .catch(e => {
+                    status.innerText = '⚠️ Error.';
+                    status.style.display = 'block';
                     completeBtn.disabled = false;
-                    completeBtn.innerHTML = '✅ Marcar como Completado';
                 });
             });
         }
