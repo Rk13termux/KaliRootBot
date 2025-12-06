@@ -1081,7 +1081,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
     
     <div class="section-title">⚡ Acciones Rápidas</div>
     <div class="action-list">
-        <a href="#" class="action-item" onclick="goToBot('labs')">
+        <a href="/webapp/labs?token={token}" class="action-item">
             <div class="action-icon green">🧪</div>
             <div class="action-content">
                 <div class="action-title">Laboratorios</div>
@@ -2059,6 +2059,241 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
 </html>"""
 
 # Learning Routes - PREMIUM ONLY
+
+HTML_LABS_HOME = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Laboratorios - KaliRoot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #17212b); color: var(--tg-theme-text-color, #fff); padding: 16px; margin: 0; padding-bottom: 80px; }
+        .hero { text-align: center; margin-bottom: 24px; padding: 16px 0; }
+        .hero h1 { font-size: 24px; margin-bottom: 8px; margin-top: 0; }
+        .hero p { color: var(--tg-theme-hint-color, #aaa); font-size: 14px; margin: 0; }
+        
+        .cat-card { background: var(--tg-theme-secondary-bg-color, #232e3c); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: block; text-decoration: none; color: inherit; }
+        .cat-header { display: flex; align-items: center; margin-bottom: 12px; }
+        .cat-icon { font-size: 24px; margin-right: 12px; width: 40px; height: 40px; background: rgba(51, 144, 236, 0.1); display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+        .cat-title { font-weight: 600; font-size: 16px; flex: 1; }
+        .cat-count { font-size: 12px; color: var(--tg-theme-hint-color, #708499); background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 10px; }
+        
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #4ade80; width: 0%; transition: width 0.3s ease; }
+        
+        .lab-list { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: none; }
+        .lab-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; color: inherit; }
+        .lab-item:last-child { border-bottom: none; }
+        .lab-status { margin-right: 12px; font-size: 18px; }
+        .lab-info { flex: 1; }
+        .lab-name { font-size: 14px; font-weight: 500; }
+        .lab-xp { font-size: 11px; color: #4ade80; }
+        
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--tg-theme-secondary-bg-color, #232e3c); padding: 12px; display: flex; justify-content: center; border-top: 1px solid rgba(255,255,255,0.05); }
+        .back-btn { background: none; border: none; color: var(--tg-theme-button-color, #3390ec); font-weight: 600; cursor: pointer; font-size: 15px; }
+        
+        /* Accordion logic */
+        .cat-card.active .lab-list { display: block; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>🧪 Laboratorios Prácticos</h1>
+        <p>100 Escenarios de Ciberseguridad</p>
+    </div>
+    <div id="categories">
+        {categories_html}
+    </div>
+    <div class="bottom-nav">
+        <button class="back-btn" onclick="window.location.href='/webapp/dashboard?token={token}'">🏠 Volver al Dashboard</button>
+    </div>
+    <script>
+        var tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        function toggleCat(id) {
+            const el = document.getElementById('cat-' + id);
+            el.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>
+"""
+
+HTML_LAB_DETAIL = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lab - KaliRoot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #17212b); color: var(--tg-theme-text-color, #fff); padding: 16px; margin: 0; padding-bottom: 100px; }
+        
+        .lab-header { margin-bottom: 24px; }
+        .lab-badge { display: inline-block; padding: 4px 10px; background: rgba(51, 144, 236, 0.15); color: #3390ec; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+        .lab-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+        
+        .mission-box { background: var(--tg-theme-secondary-bg-color, #232e3c); padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #facc15; }
+        .mission-title { font-weight: 700; font-size: 13px; color: #facc15; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .mission-text { font-size: 15px; line-height: 1.5; }
+        
+        .terminal { background: #1a1b1e; color: #4ade80; padding: 16px; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 13px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1); position: relative; min-height: 120px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .terminal-header { color: #555; font-size: 11px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; display: flex; justify-content: space-between; }
+        .cmd { color: #fff; font-weight: bold; }
+        .prompt { color: #4ade80; }
+        .output { color: #aaa; white-space: pre-wrap; margin-top: 12px; line-height: 1.4; }
+        
+        .challenge-box { margin-bottom: 24px; animation: fadeIn 0.5s; }
+        .question { font-weight: 600; margin-bottom: 12px; font-size: 15px; }
+        
+        .input-group { display: flex; gap: 10px; margin-top: 12px; }
+        input { flex: 1; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: var(--tg-theme-bg-color, #17212b); color: #fff; outline: none; font-size: 15px; }
+        input:focus { border-color: #3390ec; background: rgba(51, 144, 236, 0.05); }
+        .check-btn { background: var(--tg-theme-button-color, #3390ec); color: var(--tg-theme-button-text-color, #fff); border: none; padding: 0 20px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 15px; }
+        
+        .result-msg { margin-top: 16px; padding: 12px; border-radius: 10px; display: none; text-align: center; font-weight: 500; font-size: 14px; }
+        .result-msg.success { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); }
+        .result-msg.error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }
+        
+        .run-btn { background: var(--tg-theme-secondary-bg-color, #232e3c); color: #fff; border: 1px solid rgba(51, 144, 236, 0.5); width: 100%; padding: 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; font-size: 15px; font-weight: 600; transition: all 0.2s; }
+        .run-btn:active { transform: scale(0.98); }
+        
+        .nav-actions { margin-top: 32px; text-align: center; }
+        .nav-link { color: var(--tg-theme-hint-color, #708499); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="lab-header">
+        <div class="lab-badge">LAB {lab_id} • {category}</div>
+        <div class="lab-title">{title}</div>
+    </div>
+    
+    <div class="mission-box">
+        <div class="mission-title">🕵️ Misión de Inteligencia</div>
+        <div class="mission-text">{mission}</div>
+    </div>
+    
+    <button class="run-btn" id="runCmdBtn">
+        <span>⚡</span> Ejecutar Comando en Terminal
+    </button>
+    
+    <div class="terminal" id="terminal" style="display:none;">
+        <div class="terminal-header">
+            <span>kali@root: ~</span>
+            <span>bash</span>
+        </div>
+        <div><span class="prompt">root@kali:~#</span> <span class="cmd" id="cmdText"></span><span class="cursor">_</span></div>
+        <div class="output" id="cmdOutput"></div>
+    </div>
+    
+    <div class="challenge-box" id="challengeBox" style="display:none;">
+        <div class="question">❓ {question}</div>
+        <div class="input-group">
+            <input type="text" id="flagInput" placeholder="Ingresa la respuesta aquí..." autocomplete="off">
+            <button class="check-btn" id="checkBtn">Enviar</button>
+        </div>
+        <div class="result-msg" id="resultMsg"></div>
+    </div>
+    
+    <div class="nav-actions">
+        <a href="/webapp/labs?token={token}" class="nav-link">
+            <span>←</span> Volver a Lista de Laboratorios
+        </a>
+    </div>
+
+    <script>
+        var tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        const labData = {
+            command: "{command}",
+            output: `{output}`,
+            labId: {lab_id},
+            token: "{token}"
+        };
+        
+        const runBtn = document.getElementById('runCmdBtn');
+        const terminal = document.getElementById('terminal');
+        const cmdText = document.getElementById('cmdText');
+        const cmdOutput = document.getElementById('cmdOutput');
+        const challengeBox = document.getElementById('challengeBox');
+        
+        runBtn.addEventListener('click', () => {
+            runBtn.style.display = 'none';
+            terminal.style.display = 'block';
+            
+            // Typewriter effect
+            let i = 0;
+            const txt = labData.command;
+            const speed = 40;
+            
+            function typeWriter() {
+                if (i < txt.length) {
+                    cmdText.innerHTML += txt.charAt(i);
+                    i++;
+                    setTimeout(typeWriter, speed);
+                } else {
+                    document.querySelector('.cursor').style.display = 'none';
+                    setTimeout(() => {
+                        cmdOutput.innerText = labData.output;
+                        challengeBox.style.display = 'block';
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }, 400);
+                }
+            }
+            typeWriter();
+        });
+        
+        document.getElementById('checkBtn').addEventListener('click', () => {
+            const flag = document.getElementById('flagInput').value;
+            const resultMsg = document.getElementById('resultMsg');
+            const btn = document.getElementById('checkBtn');
+            const input = document.getElementById('flagInput');
+            
+            if(!flag) return;
+            
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            
+            fetch('/api/labs/check', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token: labData.token, lab_id: labData.labId, flag: flag })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                resultMsg.style.display = 'block';
+                
+                if(data.success) {
+                    resultMsg.className = 'result-msg success';
+                    resultMsg.innerHTML = '🎉 ¡Misión Cumplida! +' + data.xp + ' XP';
+                    input.disabled = true;
+                    tg.HapticFeedback.notificationOccurred('success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/webapp/labs?token=' + labData.token;
+                    }, 2500);
+                } else {
+                    resultMsg.className = 'result-msg error';
+                    resultMsg.innerText = '⚠️ Respuesta Incorrecta. Inténtalo de nuevo.';
+                    tg.HapticFeedback.notificationOccurred('error');
+                    input.value = '';
+                    input.focus();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+"""
 @app.get("/webapp/learning", response_class=HTMLResponse)
 async def webapp_learning(token: str = ""):
     """Main learning route showing all sections. PREMIUM ONLY."""
@@ -2375,3 +2610,160 @@ async def api_learning_progress(token: str = ""):
     except Exception as e:
         logger.exception(f"API learning progress error: {e}")
         return {"error": "Error del servidor"}
+
+# ==========================================
+# 🧪 LABS ROUTES (PREMIUM ONLY)
+# ==========================================
+
+@app.get("/webapp/labs", response_class=HTMLResponse)
+async def webapp_labs(token: str = ""):
+    """Labs Dashboard showing categories and progress."""
+    try:
+        user_id, is_premium = verify_token(token)
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2></div></body></html>", status_code=403)
+        
+        # PREMIUM CHECK
+        if not is_premium:
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        from labs_content import LAB_CATEGORIES, LABS
+        from database_manager import get_user_completed_labs
+        
+        completed = await get_user_completed_labs(user_id) or []
+        
+        categories_html = ""
+        
+        # Organize labs by category
+        labs_by_cat = {cat_key: [] for cat_key in LAB_CATEGORIES}
+        for lid, lab in LABS.items():
+            labs_by_cat[lab['cat']].append((lid, lab))
+            
+        for cat_key, cat_name in LAB_CATEGORIES.items():
+            cat_labs = labs_by_cat.get(cat_key, [])
+            if not cat_labs: continue
+            
+            # Category Progress
+            cat_completed_count = len([l for l in cat_labs if l[0] in completed])
+            total_cat = len(cat_labs)
+            progress_pct = int((cat_completed_count / total_cat) * 100) if total_cat > 0 else 0
+            
+            # Simple icon logic based on category name
+            icon = "🐧"
+            if "network" in cat_key: icon = "🌐"
+            elif "web" in cat_key: icon = "🌍"
+            elif "crypto" in cat_key: icon = "🔐"
+            elif "forensics" in cat_key: icon = "🕵️‍♂️"
+            elif "osint" in cat_key: icon = "👁️"
+            elif "privesc" in cat_key: icon = "👑"
+            elif "wifi" in cat_key: icon = "📡"
+            elif "mobile" in cat_key: icon = "📱"
+            elif "malware" in cat_key: icon = "🦠"
+            
+            # Generate Labs List HTML for this category (Hidden by default)
+            lab_list_html = '<div class="lab-list">'
+            for lid, lab in cat_labs:
+                is_done = lid in completed
+                status_icon = "✅" if is_done else "🔒" # Using padlock for todo, tick for done
+                
+                lab_list_html += f'''
+                <a href="/webapp/labs/{lid}?token={token}" class="lab-item">
+                    <div class="lab-status">{status_icon}</div>
+                    <div class="lab-info">
+                        <div class="lab-name">Lab {lid}: {lab['title']}</div>
+                        <div class="lab-xp">+{lab['xp']} XP</div>
+                    </div>
+                    <div style="color:#3390ec">›</div>
+                </a>
+                '''
+            lab_list_html += '</div>'
+            
+            categories_html += f'''
+            <div class="cat-card" id="cat-{cat_key}" onclick="toggleCat('{cat_key}')">
+                <div>
+                    <div class="cat-header">
+                        <div class="cat-icon">{icon}</div>
+                        <div class="cat-title">{cat_name.split(' ', 1)[1] if ' ' in cat_name else cat_name}</div>
+                        <div class="cat-count">{cat_completed_count}/{total_cat}</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {progress_pct}%"></div>
+                    </div>
+                    {lab_list_html}
+                </div>
+            </div>
+            '''
+            
+        html = HTML_LABS_HOME.replace("{categories_html}", categories_html)\
+            .replace("{token}", token)
+            
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Labs home error: {e}")
+        return HTMLResponse(content="<html><body>Error</body></html>", status_code=500)
+
+@app.get("/webapp/labs/{lab_id}", response_class=HTMLResponse)
+async def webapp_lab_detail(lab_id: int, token: str = ""):
+    """Shows specific lab detail."""
+    try:
+        user_id, is_premium = verify_token(token)
+        if not user_id: return HTMLResponse(content="Error: Sesión", status_code=403)
+        if not is_premium: return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        from labs_content import LABS, LAB_CATEGORIES
+        
+        if lab_id not in LABS:
+            return HTMLResponse(content="Lab no encontrado", status_code=404)
+            
+        lab = LABS[lab_id]
+        cat_name = LAB_CATEGORIES[lab['cat']]
+        
+        html = HTML_LAB_DETAIL.replace("{lab_id}", str(lab_id))\
+            .replace("{title}", lab['title'])\
+            .replace("{category}", cat_name)\
+            .replace("{mission}", lab['mission'])\
+            .replace("{command}", lab['command'])\
+            .replace("{output}", lab['output'].replace('\\n', '\\\\n').replace('"', '\\"').replace("'", "\\'"))\
+            .replace("{question}", lab['question'])\
+            .replace("{token}", token)
+            
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Lab detail error: {e}")
+        return HTMLResponse(content="<html><body>Error</body></html>", status_code=500)
+
+@app.post("/api/labs/check")
+async def api_labs_check(request: Request):
+    try:
+        data = await request.json()
+        token = data.get('token')
+        lab_id = data.get('lab_id')
+        flag = data.get('flag')
+        
+        user_id, _ = verify_token(token)
+        if not user_id: return JSONResponse({"success": False, "error": "Auth failed"})
+        
+        from labs_content import LABS
+        from database_manager import mark_lab_completed, add_xp, get_user_completed_labs
+        
+        if lab_id not in LABS: return JSONResponse({"success": False, "error": "Lab not found"})
+        
+        lab = LABS[lab_id]
+        
+        # Check flag
+        if flag.strip().lower() == lab['flag'].lower():
+            # Check if already done
+            completed = await get_user_completed_labs(user_id)
+            if lab_id not in completed:
+                await mark_lab_completed(user_id, lab_id)
+                await add_xp(user_id, lab['xp'])
+                
+            return JSONResponse({"success": True, "xp": lab['xp']})
+        else:
+            return JSONResponse({"success": False})
+            
+    except Exception as e:
+        logger.exception(f"Api lab check error: {e}")
+        return JSONResponse({"success": False, "error": str(e)})
