@@ -5,7 +5,7 @@ Títulos Persuasivos y Profesionales.
 """
 
 SECTIONS = {
-    1: {"title": "🌱 Nivel 1: Génesis del Hacker", "free": True},
+    1: {"title": "🌱 Nivel 1: Génesis del Hacker", "free": False},
     2: {"title": "👻 Nivel 2: Fantasma en la Red", "free": False},
     3: {"title": "👁️ Nivel 3: Ojos que Todo lo Ven", "free": False},
     4: {"title": "⚔️ Nivel 4: El Arte de la Intrusión", "free": False},

@@ -1089,7 +1089,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
             </div>
             <span class="action-arrow">›</span>
         </a>
-        <a href="#" class="action-item" onclick="goToBot('learning')">
+        <a href="/webapp/learning?token={token}" class="action-item">
             <div class="action-icon blue">📚</div>
             <div class="action-content">
                 <div class="action-title">Mi Ruta de Aprendizaje</div>
@@ -1282,7 +1282,8 @@ async def webapp_dashboard(token: str):
             .replace("{user_initial}", user_initial)\
             .replace("{modules_completed}", str(len(completed_modules)))\
             .replace("{credits}", str(credits))\
-            .replace("{days_left}", str(days_left))
+            .replace("{days_left}", str(days_left))\
+            .replace("{token}", token)
         
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
         
@@ -1366,3 +1367,1011 @@ async def api_create_invoice(request: Request):
     except Exception as e:
         logger.exception(f"API create-invoice error: {e}")
         return {"error": f"Error del servidor: {str(e)}"}
+
+# --- LEARNING SYSTEM WEB APP ---
+
+HTML_LEARNING_HOME = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ruta de Aprendizaje - KaliRoot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #17212b);
+            color: var(--tg-theme-text-color, #ffffff);
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 24px 16px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(51, 144, 236, 0.1) 0%, transparent 50%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .header-content { position: relative; z-index: 1; }
+        .header-icon { font-size: 48px; margin-bottom: 12px; }
+        .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .header-subtitle { 
+            color: var(--tg-theme-hint-color, #708499); 
+            font-size: 14px;
+        }
+        
+        .progress-bar-container {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            padding: 16px;
+            margin: 16px;
+            border-radius: 12px;
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .progress-label span:first-child { color: var(--tg-theme-hint-color, #708499); }
+        .progress-label span:last-child { 
+            color: var(--tg-theme-button-color, #3390ec);
+            font-weight: 600;
+        }
+        .progress-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3390ec, #00d4aa);
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+        
+        .section-list {
+            padding: 0 16px;
+        }
+        .section-card {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid transparent;
+        }
+        .section-card:active {
+            transform: scale(0.98);
+        }
+        .section-card.unlocked {
+            border-left-color: var(--tg-theme-button-color, #3390ec);
+        }
+        .section-card.completed {
+            border-left-color: #4ade80;
+        }
+        .section-card.locked {
+            border-left-color: #708499;
+            opacity: 0.7;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .section-icon { font-size: 24px; }
+        .section-info { flex: 1; }
+        .section-title { 
+            font-size: 15px; 
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .section-meta {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #708499);
+        }
+        .section-status {
+            font-size: 20px;
+        }
+        
+        .section-progress {
+            margin-top: 8px;
+        }
+        .mini-progress {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            height: 4px;
+            overflow: hidden;
+        }
+        .mini-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3390ec, #00d4aa);
+            border-radius: 4px;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+        }
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        .nav-btn.primary {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
+        }
+        .nav-btn.secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--tg-theme-text-color, #fff);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--tg-theme-hint-color, #708499);
+            border-top-color: var(--tg-theme-button-color, #3390ec);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-icon">🗺️</div>
+            <h1>Ruta de Aprendizaje</h1>
+            <p class="header-subtitle">Domina las 10 fases del Hacking Ético</p>
+        </div>
+    </div>
+    
+    <div class="progress-bar-container">
+        <div class="progress-label">
+            <span>Progreso Total</span>
+            <span id="progress-text">{completed}/{total} Módulos</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" style="width: {progress_percent}%"></div>
+        </div>
+    </div>
+    
+    <div class="section-list" id="sections">
+        {sections_html}
+    </div>
+    
+    <div class="bottom-nav">
+        <a href="/webapp/dashboard?token={token}" class="nav-btn secondary">← Dashboard</a>
+        <button class="nav-btn primary" id="continueBtn">▶️ Continuar</button>
+    </div>
+    
+    <script>
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        
+        document.getElementById('continueBtn').addEventListener('click', function() {
+            var nextModule = {next_module};
+            if (nextModule > 0) {
+                window.location.href = '/webapp/learning/module/' + nextModule + '?token={token}';
+            }
+        });
+    </script>
+</body>
+</html>"""
+
+HTML_LEARNING_SECTION = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{section_title} - KaliRoot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #17212b);
+            color: var(--tg-theme-text-color, #ffffff);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        
+        .header {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            padding: 20px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .back-link {
+            color: var(--tg-theme-button-color, #3390ec);
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .header h1 { 
+            font-size: 20px; 
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-desc {
+            color: var(--tg-theme-hint-color, #708499);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        
+        .module-list {
+            padding: 16px;
+        }
+        .module-card {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 10px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.2s;
+        }
+        .module-card:active { transform: scale(0.98); }
+        .module-card.locked {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .module-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .module-number.unlocked {
+            background: rgba(51, 144, 236, 0.2);
+            color: var(--tg-theme-button-color, #3390ec);
+        }
+        .module-number.completed {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+        .module-number.locked {
+            background: rgba(112, 132, 153, 0.2);
+            color: #708499;
+        }
+        
+        .module-info { flex: 1; }
+        .module-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .module-desc {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #708499);
+        }
+        .module-status { font-size: 18px; }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 16px;
+        }
+        .nav-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/webapp/learning?token={token}" class="back-link">← Volver a Secciones</a>
+        <h1>{section_icon} {section_title}</h1>
+        <p class="header-desc">{section_progress} módulos completados</p>
+    </div>
+    
+    <div class="module-list">
+        {modules_html}
+    </div>
+    
+    <div class="bottom-nav">
+        <a href="/webapp/learning?token={token}" class="nav-btn">🗺️ Ver Mapa Completo</a>
+    </div>
+    
+    <script>
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+    </script>
+</body>
+</html>"""
+
+HTML_LEARNING_MODULE = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Módulo {module_id} - KaliRoot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #17212b);
+            color: var(--tg-theme-text-color, #ffffff);
+            min-height: 100vh;
+            padding-bottom: 140px;
+        }
+        
+        .module-hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 24px 16px;
+            text-align: center;
+            position: relative;
+        }
+        .module-badge {
+            display: inline-block;
+            background: rgba(51, 144, 236, 0.2);
+            color: var(--tg-theme-button-color, #3390ec);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .module-badge.completed {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+        .module-hero h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .module-hero-desc {
+            color: var(--tg-theme-hint-color, #708499);
+            font-size: 14px;
+        }
+        
+        .content-section {
+            padding: 20px 16px;
+        }
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--tg-theme-hint-color, #708499);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        
+        .lesson-card {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .lesson-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            background: rgba(51, 144, 236, 0.15);
+        }
+        .lesson-info { flex: 1; }
+        .lesson-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .lesson-meta { 
+            font-size: 12px; 
+            color: var(--tg-theme-hint-color, #708499);
+        }
+        .lesson-arrow { 
+            color: var(--tg-theme-hint-color, #708499); 
+            font-size: 18px; 
+        }
+        
+        .info-box {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px;
+            border-left: 4px solid var(--tg-theme-button-color, #3390ec);
+        }
+        .info-box p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .objectives-list {
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-radius: 12px;
+            padding: 16px 16px 16px 32px;
+            margin: 0;
+        }
+        .objectives-list li {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--tg-theme-text-color, #ffffff);
+            margin-bottom: 4px;
+        }
+        .objectives-list li::marker {
+            color: #4ade80;
+        }
+        
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .concept-tag {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .tool-tag {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: monospace;
+        }
+        
+        .bottom-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 16px;
+        }
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .action-btn.primary {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
+        }
+        .action-btn.success {
+            background: #4ade80;
+            color: #000;
+        }
+        .action-btn.secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--tg-theme-text-color, #fff);
+        }
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .nav-row {
+            display: flex;
+            gap: 8px;
+        }
+        .nav-row .action-btn { flex: 1; margin-bottom: 0; }
+        
+        .status-msg {
+            text-align: center;
+            padding: 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .status-msg.success {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+        .status-msg.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+    </style>
+</head>
+<body>
+    <div class="module-hero">
+        <div class="module-badge {badge_class}">Módulo {module_id} de 100</div>
+        <h1>{module_title}</h1>
+        <p class="module-hero-desc">{module_desc}</p>
+    </div>
+    
+    <div class="content-section">
+        <h2 class="section-title">📖 Contenido de la Lección</h2>
+        <a href="{lesson_link}" class="lesson-card" id="lessonLink" target="_blank">
+            <div class="lesson-icon">📚</div>
+            <div class="lesson-info">
+                <div class="lesson-title">Abrir Lección Completa</div>
+                <div class="lesson-meta">Tutorial detallado paso a paso</div>
+            </div>
+            <span class="lesson-arrow">›</span>
+        </a>
+    </div>
+    
+    {extended_content}
+    
+    <div class="content-section">
+        <h2 class="section-title">💡 Información</h2>
+        <div class="info-box">
+            <p>Este módulo forma parte de <strong>{section_title}</strong>. 
+            Después de estudiar el contenido, marca el módulo como completado para recibir XP y desbloquear el siguiente nivel.</p>
+        </div>
+    </div>
+    
+    <div class="bottom-actions">
+        <div id="statusMsg"></div>
+        
+        {complete_button}
+        
+        <div class="nav-row">
+            {prev_button}
+            {next_button}
+        </div>
+    </div>
+    
+    <script>
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        
+        var statusMsg = document.getElementById('statusMsg');
+        var completeBtn = document.getElementById('completeBtn');
+        
+        // Handle lesson link click
+        document.getElementById('lessonLink').addEventListener('click', function(e) {
+            var url = this.getAttribute('href');
+            if (url && tg) {
+                e.preventDefault();
+                tg.openLink(url);
+            }
+        });
+        
+        // Handle complete button
+        if (completeBtn) {
+            completeBtn.addEventListener('click', function() {
+                this.disabled = true;
+                this.innerHTML = '⏳ Guardando...';
+                
+                fetch('/api/learning/complete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        token: '{token}',
+                        module_id: {module_id}
+                    })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        statusMsg.className = 'status-msg success';
+                        statusMsg.textContent = '🎉 ¡Módulo completado! +' + data.xp + ' XP';
+                        statusMsg.style.display = 'block';
+                        completeBtn.innerHTML = '✅ Completado';
+                        completeBtn.className = 'action-btn success';
+                        
+                        // Redirect to next module after delay
+                        if (data.next_module) {
+                            setTimeout(function() {
+                                window.location.href = '/webapp/learning/module/' + data.next_module + '?token={token}';
+                            }, 1500);
+                        }
+                    } else {
+                        statusMsg.className = 'status-msg error';
+                        statusMsg.textContent = data.error || 'Error al guardar progreso';
+                        statusMsg.style.display = 'block';
+                        completeBtn.disabled = false;
+                        completeBtn.innerHTML = '✅ Marcar como Completado';
+                    }
+                })
+                .catch(function() {
+                    statusMsg.className = 'status-msg error';
+                    statusMsg.textContent = 'Error de conexión';
+                    statusMsg.style.display = 'block';
+                    completeBtn.disabled = false;
+                    completeBtn.innerHTML = '✅ Marcar como Completado';
+                });
+            });
+        }
+    </script>
+</body>
+</html>"""
+
+# Learning Routes - PREMIUM ONLY
+@app.get("/webapp/learning", response_class=HTMLResponse)
+async def webapp_learning(token: str = ""):
+    """Main learning route showing all sections. PREMIUM ONLY."""
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2><p style='color:#708499'>Vuelve a abrir la app desde el bot</p></div></body></html>", status_code=403)
+        
+        # PREMIUM CHECK
+        if not is_premium:
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        from learning_content import SECTIONS, MODULES
+        from database_manager import get_user_completed_modules
+        
+        completed = await get_user_completed_modules(user_id) or []
+        total_modules = len(MODULES)
+        progress_percent = int((len(completed) / total_modules) * 100) if total_modules > 0 else 0
+        
+        # Find next module
+        next_module = 1
+        for i in range(1, 101):
+            if i not in completed:
+                next_module = i
+                break
+        
+        # Generate sections HTML
+        sections_html = ""
+        for sec_id, data in SECTIONS.items():
+            is_free = data['free']
+            
+            # Calculate section progress
+            sec_mods = [k for k in MODULES if MODULES[k]['section'] == sec_id]
+            sec_completed = len([m for m in sec_mods if m in completed])
+            total_sec = len(sec_mods)
+            sec_progress = int((sec_completed / total_sec) * 100) if total_sec > 0 else 0
+            
+            # Determine status
+            if sec_completed == total_sec:
+                status_icon = "✅"
+                status_class = "completed"
+            elif is_free or is_premium:
+                status_icon = "🔓"
+                status_class = "unlocked"
+            else:
+                status_icon = "🔒"
+                status_class = "locked"
+            
+            sections_html += f'''
+            <a href="/webapp/learning/section/{sec_id}?token={token}" class="section-card {status_class}">
+                <div class="section-header">
+                    <span class="section-icon">{data['title'].split()[0]}</span>
+                    <div class="section-info">
+                        <div class="section-title">{' '.join(data['title'].split()[1:])}</div>
+                        <div class="section-meta">{sec_completed}/{total_sec} módulos</div>
+                    </div>
+                    <span class="section-status">{status_icon}</span>
+                </div>
+                <div class="section-progress">
+                    <div class="mini-progress">
+                        <div class="mini-progress-fill" style="width: {sec_progress}%"></div>
+                    </div>
+                </div>
+            </a>
+            '''
+        
+        html = HTML_LEARNING_HOME.replace("{sections_html}", sections_html)\
+            .replace("{completed}", str(len(completed)))\
+            .replace("{total}", str(total_modules))\
+            .replace("{progress_percent}", str(progress_percent))\
+            .replace("{next_module}", str(next_module))\
+            .replace("{token}", token)
+        
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Learning home error: {e}")
+        return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Error</h2><p style='color:#708499'>Intenta abrir la app de nuevo</p></div></body></html>", status_code=500)
+
+@app.get("/webapp/learning/section/{section_id}", response_class=HTMLResponse)
+async def webapp_learning_section(section_id: int, token: str = ""):
+    """Shows modules in a specific section. PREMIUM ONLY."""
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2></div></body></html>", status_code=403)
+        
+        # PREMIUM CHECK
+        if not is_premium:
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        from learning_content import SECTIONS, MODULES
+        from database_manager import get_user_completed_modules
+        
+        if section_id not in SECTIONS:
+            return HTMLResponse(content="<html><body>Sección no encontrada</body></html>", status_code=404)
+        
+        section = SECTIONS[section_id]
+        completed = await get_user_completed_modules(user_id) or []
+        
+        # No need to check section access since all sections are premium now
+        
+        # Get modules for this section
+        section_modules = [(mod_id, mod) for mod_id, mod in MODULES.items() if mod['section'] == section_id]
+        section_modules.sort(key=lambda x: x[0])
+        
+        sec_completed = len([m_id for m_id, _ in section_modules if m_id in completed])
+        
+        # Generate modules HTML
+        modules_html = ""
+        for mod_id, mod in section_modules:
+            if mod_id in completed:
+                status_icon = "✅"
+                status_class = "completed"
+            elif mod_id == 1 or (mod_id - 1) in completed:
+                status_icon = "▶️"
+                status_class = "unlocked"
+            else:
+                status_icon = "🔒"
+                status_class = "locked"
+            
+            locked_class = "locked" if status_class == "locked" else ""
+            
+            modules_html += f'''
+            <a href="/webapp/learning/module/{mod_id}?token={token}" class="module-card {locked_class}">
+                <div class="module-number {status_class}">{mod_id}</div>
+                <div class="module-info">
+                    <div class="module-title">{mod['title']}</div>
+                    <div class="module-desc">{mod['desc']}</div>
+                </div>
+                <span class="module-status">{status_icon}</span>
+            </a>
+            '''
+        
+        html = HTML_LEARNING_SECTION.replace("{modules_html}", modules_html)\
+            .replace("{section_title}", ' '.join(section['title'].split()[1:]))\
+            .replace("{section_icon}", section['title'].split()[0])\
+            .replace("{section_progress}", f"{sec_completed}/{len(section_modules)}")\
+            .replace("{token}", token)
+        
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Learning section error: {e}")
+        return HTMLResponse(content="<html><body>Error</body></html>", status_code=500)
+
+@app.get("/webapp/learning/module/{module_id}", response_class=HTMLResponse)
+async def webapp_learning_module(module_id: int, token: str = ""):
+    """Shows a specific module's content. PREMIUM ONLY."""
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2></div></body></html>", status_code=403)
+        
+        # PREMIUM CHECK
+        if not is_premium:
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        from learning_content import SECTIONS, MODULES
+        from database_manager import get_user_completed_modules
+        
+        if module_id not in MODULES:
+            return HTMLResponse(content="<html><body>Módulo no encontrado</body></html>", status_code=404)
+        
+        module = MODULES[module_id]
+        section = SECTIONS[module['section']]
+        completed = await get_user_completed_modules(user_id) or []
+        
+        # Check sequential access
+        first_incomplete = 1
+        for i in range(1, 101):
+            if i not in completed:
+                first_incomplete = i
+                break
+        
+        if module_id > first_incomplete and module_id not in completed:
+            return HTMLResponse(content=f"<html><body style='background:#17212b;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>🔒 Módulo Bloqueado</h2><p style='color:#708499'>Completa el módulo {first_incomplete} primero</p><a href='/webapp/learning/module/{first_incomplete}?token={token}' style='color:#3390ec;display:block;margin-top:16px'>Ir al Módulo {first_incomplete}</a></div></body></html>")
+        
+        is_completed = module_id in completed
+        badge_class = "completed" if is_completed else ""
+        
+        # Complete button
+        if is_completed:
+            complete_button = '<button class="action-btn success" disabled>✅ Completado</button>'
+        else:
+            complete_button = '<button class="action-btn primary" id="completeBtn">✅ Marcar como Completado</button>'
+        
+        # Navigation buttons
+        prev_button = ""
+        next_button = ""
+        
+        if module_id > 1:
+            prev_button = f'<a href="/webapp/learning/module/{module_id - 1}?token={token}" class="action-btn secondary">← Anterior</a>'
+        else:
+            prev_button = '<button class="action-btn secondary" disabled>← Anterior</button>'
+        
+        if module_id < 100:
+            if is_completed or module_id + 1 in completed:
+                next_button = f'<a href="/webapp/learning/module/{module_id + 1}?token={token}" class="action-btn secondary">Siguiente →</a>'
+            else:
+                next_button = '<button class="action-btn secondary" disabled>Siguiente →</button>'
+        else:
+            next_button = '<button class="action-btn secondary" disabled>Siguiente →</button>'
+        
+        from module_content import generate_module_html
+        extended_content = generate_module_html(module_id)
+        
+        html = HTML_LEARNING_MODULE.replace("{module_id}", str(module_id))\
+            .replace("{module_title}", module['title'])\
+            .replace("{module_desc}", module['desc'])\
+            .replace("{lesson_link}", module['link'])\
+            .replace("{section_title}", section['title'])\
+            .replace("{badge_class}", badge_class)\
+            .replace("{complete_button}", complete_button)\
+            .replace("{prev_button}", prev_button)\
+            .replace("{next_button}", next_button)\
+            .replace("{token}", token)\
+            .replace("{extended_content}", extended_content)
+        
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Learning module error: {e}")
+        return HTMLResponse(content="<html><body>Error</body></html>", status_code=500)
+
+@app.post("/api/learning/complete")
+async def api_learning_complete(request: Request):
+    """API endpoint to mark a module as completed."""
+    try:
+        data = await request.json()
+        token = data.get('token', '')
+        module_id = data.get('module_id')
+        
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return {"success": False, "error": "Sesión expirada"}
+        
+        if not module_id:
+            return {"success": False, "error": "Módulo inválido"}
+        
+        from database_manager import mark_module_completed, get_user_completed_modules
+        from learning_content import MODULES
+        
+        # Mark as completed
+        success = await mark_module_completed(user_id, module_id)
+        
+        if success:
+            # Calculate XP (simple formula)
+            xp_gained = 50 + (module_id * 2)  # More XP for later modules
+            
+            # Try to add XP
+            try:
+                from database_manager import add_xp
+                await add_xp(user_id, xp_gained)
+            except Exception as e:
+                logger.warning(f"Could not add XP: {e}")
+            
+            # Find next module
+            completed = await get_user_completed_modules(user_id) or []
+            next_module = None
+            if module_id < 100 and (module_id + 1) not in completed:
+                next_module = module_id + 1
+            
+            return {
+                "success": True,
+                "xp": xp_gained,
+                "next_module": next_module
+            }
+        else:
+            return {"success": False, "error": "Error al guardar progreso"}
+        
+    except Exception as e:
+        logger.exception(f"API learning complete error: {e}")
+        return {"success": False, "error": "Error del servidor"}
+
+@app.get("/api/learning/progress")
+async def api_learning_progress(token: str = ""):
+    """API endpoint to get user's learning progress."""
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return {"error": "Sesión expirada"}
+        
+        from database_manager import get_user_completed_modules
+        from learning_content import SECTIONS, MODULES
+        
+        completed = await get_user_completed_modules(user_id) or []
+        
+        sections_progress = {}
+        for sec_id, data in SECTIONS.items():
+            sec_mods = [k for k in MODULES if MODULES[k]['section'] == sec_id]
+            sec_completed = len([m for m in sec_mods if m in completed])
+            sections_progress[sec_id] = {
+                "title": data['title'],
+                "completed": sec_completed,
+                "total": len(sec_mods),
+                "is_free": data['free']
+            }
+        
+        return {
+            "user_id": user_id,
+            "is_premium": is_premium,
+            "total_completed": len(completed),
+            "total_modules": len(MODULES),
+            "completed_modules": completed,
+            "sections": sections_progress
+        }
+        
+    except Exception as e:
+        logger.exception(f"API learning progress error: {e}")
+        return {"error": "Error del servidor"}
