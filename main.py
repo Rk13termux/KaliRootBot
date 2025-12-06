@@ -384,7 +384,7 @@ if __name__ == '__main__':
     uvicorn.run('main:app', host=host, port=port, log_level=LOG_LEVEL.lower(), workers=workers)
 
 # --- WEB APP PREMIUM IMPLEMENTATION ---
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 import hmac
 import hashlib
 import urllib.parse
