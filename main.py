@@ -2020,52 +2020,96 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             background-clip: text;
         }
         
-        /* ===== MODULE HERO IMAGE ===== */
-        .header-image {
-            width: 100%;
-            height: 220px;
-            background-image: url('{module_image}');
-            background-size: cover;
-            background-position: center;
+        /* ===== MODULE HERO SECTION ===== */
+        .module-hero {
+            background: linear-gradient(135deg, #0a0a0a 0%, #111827 50%, #0f172a 100%);
+            padding: 32px 24px;
+            text-align: center;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.15);
             position: relative;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            overflow: hidden;
         }
-        .header-overlay {
-            position: absolute; inset: 0;
-            background: linear-gradient(to top, var(--bg-color) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.3) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 24px;
+        .module-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 50%, rgba(51, 144, 236, 0.08) 0%, transparent 50%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
         }
         
-        .module-badge {
-            background: rgba(51, 144, 236, 0.2);
-            color: var(--button);
-            backdrop-filter: blur(8px);
-            font-size: 11px;
-            font-weight: 800;
-            padding: 6px 14px;
-            border-radius: 20px;
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .module-number-display {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+            text-shadow: 0 0 60px rgba(51, 144, 236, 0.4);
+        }
+        
+        .module-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--hint);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            align-self: flex-start;
-            margin-bottom: 12px;
-            border: 1px solid rgba(51, 144, 236, 0.3);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .module-badge.completed {
-            background: rgba(74, 222, 128, 0.2);
-            color: #4ade80;
-            border-color: rgba(74, 222, 128, 0.3);
+            letter-spacing: 3px;
+            margin-bottom: 16px;
         }
         
-        h1 { 
-            font-size: 24px; 
-            font-weight: 800; 
-            line-height: 1.2;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            margin: 0;
+        .module-title {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+        
+        .module-meta {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.05);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .meta-icon {
+            font-size: 16px;
+        }
+        .meta-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .meta-value.xp {
+            color: #4ade80;
+        }
+        .meta-value.status-completed {
+            color: #4ade80;
+        }
+        .meta-value.status-pending {
+            color: var(--button);
         }
         
         .main-content {
@@ -2075,8 +2119,8 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
         .hero-desc {
             color: var(--hint);
             font-size: 15px;
-            line-height: 1.6;
-            padding: 20px 24px;
+            line-height: 1.7;
+            padding: 24px;
             background: #0d0d0d;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
@@ -2226,11 +2270,26 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
         <span class="brand-name">KALIROOT-AI</span>
     </div>
     
-    <!-- MODULE HERO IMAGE -->
-    <div class="header-image">
-        <div class="header-overlay">
-            <div class="module-badge {badge_class}">Módulo {module_id}</div>
-            <h1>{module_title}</h1>
+    <!-- MODULE HERO SECTION -->
+    <div class="module-hero">
+        <div class="hero-content">
+            <div class="module-label">Módulo de Aprendizaje</div>
+            <div class="module-number-display">{module_id}</div>
+            <h1 class="module-title">{module_title}</h1>
+            <div class="module-meta">
+                <div class="meta-item">
+                    <span class="meta-icon">⚡</span>
+                    <span class="meta-value xp">+20 XP</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">{status_icon}</span>
+                    <span class="meta-value {status_class}">{status_text}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">📚</span>
+                    <span class="meta-value">{section_name}</span>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -2324,7 +2383,7 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
                     if(d.ok) {
                         status.style.display = 'block';
                         status.style.color = '#4ade80';
-                        status.innerText = '✅ Módulo completado. +XP';
+                        status.innerText = '✅ Módulo completado. +20 XP';
                         tg.HapticFeedback.notificationOccurred('success');
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
@@ -2354,49 +2413,261 @@ HTML_LABS_HOME = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Laboratorios - KaliRoot</title>
+    <title>Laboratorios - KALIROOT-AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #17212b); color: var(--tg-theme-text-color, #fff); padding: 16px; margin: 0; padding-bottom: 80px; }
-        .hero { text-align: center; margin-bottom: 24px; padding: 16px 0; }
-        .hero h1 { font-size: 24px; margin-bottom: 8px; margin-top: 0; }
-        .hero p { color: var(--tg-theme-hint-color, #aaa); font-size: 14px; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: #000000; 
+            color: #fff; 
+            padding: 0; 
+            margin: 0; 
+            padding-bottom: 150px;
+            display: flex;
+            flex-direction: column;
+        }
         
-        .cat-card { background: var(--tg-theme-secondary-bg-color, #232e3c); padding: 16px; border-radius: 12px; margin-bottom: 12px; display: block; text-decoration: none; color: inherit; }
+        /* ===== HEADER CON LOGO ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+        }
+        .logo-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* ===== HERO SECTION ===== */
+        .hero { 
+            text-align: center; 
+            padding: 32px 16px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #111827 50%, #0f172a 100%);
+            border-bottom: 1px solid rgba(51, 144, 236, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 50%, rgba(51, 144, 236, 0.08) 0%, transparent 50%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        .hero-content { position: relative; z-index: 1; }
+        .hero-icon { font-size: 56px; margin-bottom: 16px; }
+        .hero h1 { font-size: 26px; margin-bottom: 8px; font-weight: 800; }
+        .hero p { color: #708499; font-size: 14px; margin: 0; }
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .hero-stat {
+            text-align: center;
+        }
+        .hero-stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #3390ec;
+        }
+        .hero-stat-label {
+            font-size: 11px;
+            color: #708499;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 16px;
+        }
+        
+        .cat-card { 
+            background: #111111; 
+            padding: 16px; 
+            border-radius: 12px; 
+            margin-bottom: 12px; 
+            display: block; 
+            text-decoration: none; 
+            color: inherit;
+            border: 1px solid rgba(51, 144, 236, 0.1);
+            transition: transform 0.2s;
+        }
+        .cat-card:active {
+            transform: scale(0.98);
+        }
         .cat-header { display: flex; align-items: center; margin-bottom: 12px; }
-        .cat-icon { font-size: 24px; margin-right: 12px; width: 40px; height: 40px; background: rgba(51, 144, 236, 0.1); display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+        .cat-icon { 
+            font-size: 24px; 
+            margin-right: 12px; 
+            width: 44px; 
+            height: 44px; 
+            background: rgba(51, 144, 236, 0.15); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 10px;
+            border: 1px solid rgba(51, 144, 236, 0.2);
+        }
         .cat-title { font-weight: 600; font-size: 16px; flex: 1; }
-        .cat-count { font-size: 12px; color: var(--tg-theme-hint-color, #708499); background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 10px; }
+        .cat-count { 
+            font-size: 12px; 
+            color: #3390ec; 
+            background: rgba(51, 144, 236, 0.15); 
+            padding: 4px 10px; 
+            border-radius: 10px;
+            font-weight: 600;
+        }
         
-        .progress-bar { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: #4ade80; width: 0%; transition: width 0.3s ease; }
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4ade80, #22c55e); width: 0%; transition: width 0.3s ease; }
         
         .lab-list { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: none; }
-        .lab-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; color: inherit; }
-        .lab-item:last-child { border-bottom: none; }
+        .lab-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 12px; 
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            text-decoration: none; 
+            color: inherit;
+            transition: background 0.2s;
+        }
+        .lab-item:active {
+            background: rgba(51, 144, 236, 0.1);
+        }
         .lab-status { margin-right: 12px; font-size: 18px; }
         .lab-info { flex: 1; }
         .lab-name { font-size: 14px; font-weight: 500; }
-        .lab-xp { font-size: 11px; color: #4ade80; }
+        .lab-xp { font-size: 11px; color: #4ade80; font-weight: 600; }
+        .lab-arrow { color: #708499; font-size: 16px; }
         
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--tg-theme-secondary-bg-color, #232e3c); padding: 12px; display: flex; justify-content: center; border-top: 1px solid rgba(255,255,255,0.05); }
-        .back-btn { background: none; border: none; color: var(--tg-theme-button-color, #3390ec); font-weight: 600; cursor: pointer; font-size: 15px; }
+        /* ===== BOTTOM NAV ===== */
+        .bottom-nav { 
+            position: fixed; 
+            bottom: 50px; 
+            left: 0; 
+            right: 0; 
+            background: #0a0a0a; 
+            padding: 12px 16px; 
+            display: flex; 
+            justify-content: center; 
+            border-top: 1px solid rgba(51, 144, 236, 0.2); 
+        }
+        .nav-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            background: #3390ec;
+            color: #fff;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .nav-btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+        
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.5px;
+        }
         
         /* Accordion logic */
         .cat-card.active .lab-list { display: block; }
+        .cat-card.active {
+            border-color: rgba(51, 144, 236, 0.3);
+        }
     </style>
 </head>
 <body>
+    <!-- HEADER CON LOGO -->
+    <div class="top-header">
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="brand-name">KALIROOT-AI</span>
+    </div>
+    
+    <!-- HERO SECTION -->
     <div class="hero">
-        <h1>🧪 Laboratorios Prácticos</h1>
-        <p>100 Escenarios de Ciberseguridad</p>
+        <div class="hero-content">
+            <div class="hero-icon">🧪</div>
+            <h1>Laboratorios Prácticos</h1>
+            <p>Escenarios de Ciberseguridad en Tiempo Real</p>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-value">100</div>
+                    <div class="hero-stat-label">Escenarios</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">10</div>
+                    <div class="hero-stat-label">Categorías</div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="categories">
-        {categories_html}
+    
+    <div class="main-content">
+        <div id="categories">
+            {categories_html}
+        </div>
     </div>
+    
+    <!-- BOTTOM NAV -->
     <div class="bottom-nav">
-        <button class="back-btn" onclick="window.location.href='/webapp/dashboard?token={token}'">🏠 Volver al Dashboard</button>
+        <button class="nav-btn" onclick="window.location.href='/webapp/dashboard?token={token}'">🏠 Volver al Dashboard</button>
     </div>
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Todos los derechos reservados.</p>
+    </div>
+    
     <script>
         var tg = window.Telegram.WebApp;
         tg.expand();
@@ -2416,83 +2687,407 @@ HTML_LAB_DETAIL = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lab - KaliRoot</title>
+    <title>Lab {lab_id} - KALIROOT-AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--tg-theme-bg-color, #17212b); color: var(--tg-theme-text-color, #fff); padding: 16px; margin: 0; padding-bottom: 100px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: #000000; 
+            color: #fff; 
+            padding-bottom: 180px;
+            display: flex;
+            flex-direction: column;
+        }
         
-        .lab-header { margin-bottom: 24px; }
-        .lab-badge { display: inline-block; padding: 4px 10px; background: rgba(51, 144, 236, 0.15); color: #3390ec; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
-        .lab-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+        /* ===== HEADER CON LOGO ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .logo-img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         
-        .mission-box { background: var(--tg-theme-secondary-bg-color, #232e3c); padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #facc15; }
-        .mission-title { font-weight: 700; font-size: 13px; color: #facc15; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .mission-text { font-size: 15px; line-height: 1.5; }
+        /* ===== LAB HERO SECTION ===== */
+        .lab-hero {
+            background: linear-gradient(135deg, #0a0a0a 0%, #111827 50%, #0f172a 100%);
+            padding: 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .lab-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 50%, rgba(51, 144, 236, 0.08) 0%, transparent 50%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        .hero-content { position: relative; z-index: 1; }
         
-        .terminal { background: #1a1b1e; color: #4ade80; padding: 16px; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 13px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1); position: relative; min-height: 120px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .terminal-header { color: #555; font-size: 11px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; display: flex; justify-content: space-between; }
+        .lab-number-display {
+            font-size: 64px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .lab-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #708499;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 12px;
+        }
+        .lab-title {
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-bottom: 16px;
+        }
+        .lab-meta {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .meta-icon { font-size: 14px; }
+        .meta-value { font-size: 12px; font-weight: 600; }
+        .meta-value.xp { color: #4ade80; }
+        .meta-value.category { color: #3390ec; }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+        
+        /* ===== MISSION BOX ===== */
+        .mission-box { 
+            background: #111111; 
+            padding: 18px; 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            border-left: 4px solid #facc15;
+            border: 1px solid rgba(51, 144, 236, 0.1);
+            border-left: 4px solid #facc15;
+        }
+        .mission-title { 
+            font-weight: 700; 
+            font-size: 12px; 
+            color: #facc15; 
+            margin-bottom: 8px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .mission-text { font-size: 15px; line-height: 1.6; color: #ccc; }
+        
+        /* ===== TERMINAL ===== */
+        .terminal { 
+            background: #0d0d0d; 
+            color: #4ade80; 
+            padding: 18px; 
+            border-radius: 12px; 
+            font-family: 'JetBrains Mono', 'Courier New', monospace; 
+            font-size: 13px; 
+            margin-bottom: 20px; 
+            border: 1px solid rgba(51, 144, 236, 0.15);
+            min-height: 120px; 
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .terminal-header { 
+            color: #555; 
+            font-size: 11px; 
+            margin-bottom: 12px; 
+            border-bottom: 1px solid rgba(255,255,255,0.08); 
+            padding-bottom: 8px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+        }
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .terminal-dot.red { background: #ff5f56; }
+        .terminal-dot.yellow { background: #ffbd2e; }
+        .terminal-dot.green { background: #27ca40; }
         .cmd { color: #fff; font-weight: bold; }
         .prompt { color: #4ade80; }
-        .output { color: #aaa; white-space: pre-wrap; margin-top: 12px; line-height: 1.4; }
+        .output { color: #aaa; white-space: pre-wrap; margin-top: 12px; line-height: 1.5; }
+        .cursor { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
         
-        .challenge-box { margin-bottom: 24px; animation: fadeIn 0.5s; }
-        .question { font-weight: 600; margin-bottom: 12px; font-size: 15px; }
+        /* ===== RUN BUTTON ===== */
+        .run-btn { 
+            background: linear-gradient(135deg, #3390ec, #2563eb);
+            color: #fff; 
+            border: none;
+            width: 100%; 
+            padding: 18px; 
+            border-radius: 14px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            font-size: 16px; 
+            font-weight: 700;
+            transition: transform 0.2s, opacity 0.2s;
+            box-shadow: 0 8px 20px rgba(51, 144, 236, 0.3);
+        }
+        .run-btn:active { transform: scale(0.98); opacity: 0.9; }
         
-        .input-group { display: flex; gap: 10px; margin-top: 12px; }
-        input { flex: 1; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: var(--tg-theme-bg-color, #17212b); color: #fff; outline: none; font-size: 15px; }
+        /* ===== CHALLENGE BOX ===== */
+        .challenge-box { 
+            background: #111111;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px; 
+            animation: fadeIn 0.5s;
+            border: 1px solid rgba(51, 144, 236, 0.1);
+        }
+        .question { 
+            font-weight: 600; 
+            margin-bottom: 16px; 
+            font-size: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .input-group { display: flex; gap: 10px; }
+        input { 
+            flex: 1; 
+            padding: 14px 16px; 
+            border-radius: 10px; 
+            border: 1px solid rgba(51, 144, 236, 0.2);
+            background: #0a0a0a; 
+            color: #fff; 
+            outline: none; 
+            font-size: 15px;
+            font-family: 'JetBrains Mono', monospace;
+        }
         input:focus { border-color: #3390ec; background: rgba(51, 144, 236, 0.05); }
-        .check-btn { background: var(--tg-theme-button-color, #3390ec); color: var(--tg-theme-button-text-color, #fff); border: none; padding: 0 20px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 15px; }
+        input::placeholder { color: #555; }
         
-        .result-msg { margin-top: 16px; padding: 12px; border-radius: 10px; display: none; text-align: center; font-weight: 500; font-size: 14px; }
-        .result-msg.success { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); }
-        .result-msg.error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .check-btn { 
+            background: #3390ec; 
+            color: #fff; 
+            border: none; 
+            padding: 0 24px; 
+            border-radius: 10px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            font-size: 15px;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .check-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .check-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         
-        .run-btn { background: var(--tg-theme-secondary-bg-color, #232e3c); color: #fff; border: 1px solid rgba(51, 144, 236, 0.5); width: 100%; padding: 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; font-size: 15px; font-weight: 600; transition: all 0.2s; }
-        .run-btn:active { transform: scale(0.98); }
-        
-        .nav-actions { margin-top: 32px; text-align: center; }
-        .nav-link { color: var(--tg-theme-hint-color, #708499); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+        .result-msg { 
+            margin-top: 16px; 
+            padding: 14px; 
+            border-radius: 12px; 
+            display: none; 
+            text-align: center; 
+            font-weight: 600; 
+            font-size: 14px;
+        }
+        .result-msg.success { 
+            background: rgba(74, 222, 128, 0.15); 
+            color: #4ade80; 
+            border: 1px solid rgba(74, 222, 128, 0.3); 
+        }
+        .result-msg.error { 
+            background: rgba(239, 68, 68, 0.15); 
+            color: #fca5a5; 
+            border: 1px solid rgba(239, 68, 68, 0.3); 
+        }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* ===== BOTTOM ACTIONS ===== */
+        .bottom-actions {
+            position: fixed; 
+            bottom: 50px; 
+            left: 0; 
+            right: 0;
+            background: #0a0a0a;
+            padding: 16px 20px;
+            border-top: 1px solid rgba(51, 144, 236, 0.2);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .action-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .action-btn.primary {
+            background: #3390ec;
+            color: #fff;
+        }
+        .action-btn.secondary {
+            background: rgba(51, 144, 236, 0.15);
+            color: #3390ec;
+            border: 1px solid rgba(51, 144, 236, 0.3);
+        }
+        
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+            z-index: 101;
+        }
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
-    <div class="lab-header">
-        <div class="lab-badge">LAB {lab_id} • {category}</div>
-        <div class="lab-title">{title}</div>
+    <!-- HEADER CON LOGO -->
+    <div class="top-header">
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="brand-name">KALIROOT-AI</span>
     </div>
     
-    <div class="mission-box">
-        <div class="mission-title">🕵️ Misión de Inteligencia</div>
-        <div class="mission-text">{mission}</div>
-    </div>
-    
-    <button class="run-btn" id="runCmdBtn">
-        <span>⚡</span> Ejecutar Comando en Terminal
-    </button>
-    
-    <div class="terminal" id="terminal" style="display:none;">
-        <div class="terminal-header">
-            <span>kali@root: ~</span>
-            <span>bash</span>
+    <!-- LAB HERO SECTION -->
+    <div class="lab-hero">
+        <div class="hero-content">
+            <div class="lab-label">Laboratorio Práctico</div>
+            <div class="lab-number-display">{lab_id}</div>
+            <h1 class="lab-title">{title}</h1>
+            <div class="lab-meta">
+                <div class="meta-item">
+                    <span class="meta-icon">⚡</span>
+                    <span class="meta-value xp">+{xp} XP</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">📁</span>
+                    <span class="meta-value category">{category}</span>
+                </div>
+            </div>
         </div>
-        <div><span class="prompt">root@kali:~#</span> <span class="cmd" id="cmdText"></span><span class="cursor">_</span></div>
-        <div class="output" id="cmdOutput"></div>
     </div>
     
-    <div class="challenge-box" id="challengeBox" style="display:none;">
-        <div class="question">❓ {question}</div>
-        <div class="input-group">
-            <input type="text" id="flagInput" placeholder="Ingresa la respuesta aquí..." autocomplete="off">
-            <button class="check-btn" id="checkBtn">Enviar</button>
+    <div class="main-content">
+        <!-- MISSION BOX -->
+        <div class="mission-box">
+            <div class="mission-title">🕵️ Misión de Inteligencia</div>
+            <div class="mission-text">{mission}</div>
         </div>
-        <div class="result-msg" id="resultMsg"></div>
+        
+        <!-- RUN COMMAND BUTTON -->
+        <button class="run-btn" id="runCmdBtn">
+            <span>⚡</span> Ejecutar Comando en Terminal
+        </button>
+        
+        <!-- TERMINAL -->
+        <div class="terminal" id="terminal" style="display:none;">
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <span>kali@kaliroot-ai: ~</span>
+            </div>
+            <div><span class="prompt">root@kali:~#</span> <span class="cmd" id="cmdText"></span><span class="cursor">_</span></div>
+            <div class="output" id="cmdOutput"></div>
+        </div>
+        
+        <!-- CHALLENGE BOX -->
+        <div class="challenge-box" id="challengeBox" style="display:none;">
+            <div class="question">❓ {question}</div>
+            <div class="input-group">
+                <input type="text" id="flagInput" placeholder="Tu respuesta..." autocomplete="off">
+                <button class="check-btn" id="checkBtn">Enviar</button>
+            </div>
+            <div class="result-msg" id="resultMsg"></div>
+        </div>
+    </div>
+
+    <!-- BOTTOM ACTIONS -->
+    <div class="bottom-actions">
+        <a href="/webapp/labs?token={token}" class="action-btn secondary">← Laboratorios</a>
+        <a href="/webapp/dashboard?token={token}" class="action-btn primary">🏠 Dashboard</a>
     </div>
     
-    <div class="nav-actions">
-        <a href="/webapp/labs?token={token}" class="nav-link">
-            <span>←</span> Volver a Lista de Laboratorios
-        </a>
+    <!-- FOOTER -->
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Todos los derechos reservados.</p>
     </div>
 
     <script>
@@ -2531,11 +3126,19 @@ HTML_LAB_DETAIL = """
                     setTimeout(() => {
                         cmdOutput.innerText = labData.output;
                         challengeBox.style.display = 'block';
-                        tg.HapticFeedback.notificationOccurred('success');
+                        challengeBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                     }, 400);
                 }
             }
             typeWriter();
+        });
+        
+        // Handle Enter key on input
+        document.getElementById('flagInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') {
+                document.getElementById('checkBtn').click();
+            }
         });
         
         document.getElementById('checkBtn').addEventListener('click', () => {
@@ -2544,10 +3147,13 @@ HTML_LAB_DETAIL = """
             const btn = document.getElementById('checkBtn');
             const input = document.getElementById('flagInput');
             
-            if(!flag) return;
+            if(!flag.trim()) {
+                input.focus();
+                return;
+            }
             
             btn.disabled = true;
-            btn.style.opacity = '0.7';
+            btn.textContent = '⏳';
             
             fetch('/api/labs/check', {
                 method: 'POST',
@@ -2556,26 +3162,40 @@ HTML_LAB_DETAIL = """
             })
             .then(r => r.json())
             .then(data => {
-                btn.disabled = false;
-                btn.style.opacity = '1';
                 resultMsg.style.display = 'block';
                 
                 if(data.success) {
                     resultMsg.className = 'result-msg success';
                     resultMsg.innerHTML = '🎉 ¡Misión Cumplida! +' + data.xp + ' XP';
                     input.disabled = true;
-                    tg.HapticFeedback.notificationOccurred('success');
+                    btn.disabled = true;
+                    btn.textContent = '✅';
+                    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                     
                     setTimeout(() => {
                         window.location.href = '/webapp/labs?token=' + labData.token;
-                    }, 2500);
+                    }, 2000);
                 } else {
                     resultMsg.className = 'result-msg error';
                     resultMsg.innerText = '⚠️ Respuesta Incorrecta. Inténtalo de nuevo.';
-                    tg.HapticFeedback.notificationOccurred('error');
+                    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                     input.value = '';
                     input.focus();
+                    btn.disabled = false;
+                    btn.textContent = 'Enviar';
+                    
+                    // Hide error after 3 seconds
+                    setTimeout(() => {
+                        resultMsg.style.display = 'none';
+                    }, 3000);
                 }
+            })
+            .catch(e => {
+                resultMsg.style.display = 'block';
+                resultMsg.className = 'result-msg error';
+                resultMsg.innerText = '⚠️ Error de conexión. Inténtalo de nuevo.';
+                btn.disabled = false;
+                btn.textContent = 'Enviar';
             });
         });
     </script>
@@ -2766,6 +3386,19 @@ async def webapp_learning_module(module_id: int, token: str = ""):
         is_completed = module_id in completed
         badge_class = "completed" if is_completed else ""
         
+        # Status info for hero section
+        if is_completed:
+            status_icon = "✅"
+            status_text = "Completado"
+            status_class = "status-completed"
+        else:
+            status_icon = "⏳"
+            status_text = "Pendiente"
+            status_class = "status-pending"
+        
+        # Section name
+        section_name = section['title'].split(': ')[1] if ': ' in section['title'] else section['title']
+        
         # Complete button
         if is_completed:
             complete_button = '<button class="action-btn success" disabled>✅ Completado</button>'
@@ -2792,7 +3425,10 @@ async def webapp_learning_module(module_id: int, token: str = ""):
         html = HTML_LEARNING_MODULE.replace("{module_id}", str(module_id))\
             .replace("{module_title}", module['title'])\
             .replace("{module_desc}", module['desc'])\
-            .replace("{module_image}", "/" + module['img'])\
+            .replace("{status_icon}", status_icon)\
+            .replace("{status_text}", status_text)\
+            .replace("{status_class}", status_class)\
+            .replace("{section_name}", section_name)\
             .replace("{badge_class}", badge_class)\
             .replace("{complete_button}", complete_button)\
             .replace("{prev_button}", prev_button)\
@@ -3005,6 +3641,7 @@ async def webapp_lab_detail(lab_id: int, token: str = ""):
         html = HTML_LAB_DETAIL.replace("{lab_id}", str(lab_id))\
             .replace("{title}", lab['title'])\
             .replace("{category}", cat_name)\
+            .replace("{xp}", str(lab['xp']))\
             .replace("{mission}", lab['mission'])\
             .replace("{command}", lab['command'])\
             .replace("{output}", lab['output'].replace('\\n', '\\\\n').replace('"', '\\"').replace("'", "\\'"))\
