@@ -1169,7 +1169,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
                 </div>
                 <span class="action-arrow">›</span>
             </a>
-            <a href="#" class="action-item" onclick="goToBot('ai')">
+            <a href="/webapp/chat?token={token}" class="action-item">
                 <div class="action-icon purple">🤖</div>
                 <div class="action-content">
                     <div class="action-title">Asistente IA</div>
@@ -1496,16 +1496,54 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
         
         /* ===== HERO SECTION ===== */
         .hero-section {
-            background: #0d0d0d;
-            padding: 24px 16px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            text-align: center; 
+            padding: 32px 16px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #111827 50%, #0f172a 100%);
+            border-bottom: 1px solid rgba(51, 144, 236, 0.15);
+            position: relative;
+            overflow: hidden;
         }
-        .hero-icon { font-size: 48px; margin-bottom: 12px; }
-        .hero-section h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 50%, rgba(51, 144, 236, 0.08) 0%, transparent 50%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        .hero-content { position: relative; z-index: 1; }
+        .hero-icon { font-size: 56px; margin-bottom: 16px; }
+        .hero-section h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
         .hero-subtitle { 
             color: #708499; 
             font-size: 14px;
+            margin-bottom: 0;
+        }
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .hero-stat {
+            text-align: center;
+        }
+        .hero-stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #3390ec;
+        }
+        .hero-stat-label {
+            font-size: 11px;
+            color: #708499;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .main-content {
@@ -1691,9 +1729,21 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
     
     <!-- HERO SECTION -->
     <div class="hero-section">
-        <div class="hero-icon">🗺️</div>
-        <h1>Ruta de Aprendizaje</h1>
-        <p class="hero-subtitle">Domina las 10 fases del Hacking Ético</p>
+        <div class="hero-content">
+            <div class="hero-icon">🗺️</div>
+            <h1>Ruta de Aprendizaje</h1>
+            <p class="hero-subtitle">Domina las 10 fases del Hacking Ético</p>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-value">100</div>
+                    <div class="hero-stat-label">Módulos</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">10</div>
+                    <div class="hero-stat-label">Niveles</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="main-content">
@@ -3202,6 +3252,520 @@ HTML_LAB_DETAIL = """
 </body>
 </html>
 """
+
+# ===== AI CHAT TEMPLATE =====
+HTML_AI_CHAT = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asistente IA - KALIROOT-AI</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* ===== HEADER ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-img {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .header-title {
+            font-size: 16px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-subtitle {
+            font-size: 11px;
+            color: #708499;
+        }
+        .new-chat-btn {
+            background: rgba(51, 144, 236, 0.15);
+            border: 1px solid rgba(51, 144, 236, 0.3);
+            color: #3390ec;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* ===== CHAT CONTAINER ===== */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 200px;
+        }
+        
+        .welcome-card {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #111827 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(51, 144, 236, 0.1);
+            margin-bottom: 20px;
+        }
+        .welcome-icon { font-size: 56px; margin-bottom: 16px; }
+        .welcome-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+        .welcome-subtitle { color: #708499; font-size: 14px; line-height: 1.5; }
+        
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .suggestion-chip {
+            background: rgba(51, 144, 236, 0.1);
+            border: 1px solid rgba(51, 144, 236, 0.2);
+            color: #3390ec;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .suggestion-chip:active {
+            background: rgba(51, 144, 236, 0.2);
+            transform: scale(0.98);
+        }
+        
+        /* ===== MESSAGES ===== */
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message-user {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .message-user .bubble {
+            background: #3390ec;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 18px 18px 4px 18px;
+            max-width: 85%;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .message-ai {
+            display: flex;
+            gap: 12px;
+        }
+        .ai-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .message-ai .bubble {
+            background: #111111;
+            color: #fff;
+            padding: 16px;
+            border-radius: 4px 18px 18px 18px;
+            max-width: 90%;
+            font-size: 15px;
+            line-height: 1.7;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* Code blocks */
+        .bubble pre {
+            background: #0a0a0a;
+            padding: 14px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 12px 0;
+            border: 1px solid rgba(51, 144, 236, 0.15);
+        }
+        .bubble code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #4ade80;
+        }
+        .bubble p { margin-bottom: 12px; }
+        .bubble p:last-child { margin-bottom: 0; }
+        .bubble b { color: #3390ec; }
+        .bubble ul, .bubble ol { margin-left: 20px; margin-bottom: 12px; }
+        .bubble li { margin-bottom: 6px; }
+        
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #3390ec;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+        
+        /* ===== INPUT AREA ===== */
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #0a0a0a;
+            padding: 12px 16px 24px;
+            border-top: 1px solid rgba(51, 144, 236, 0.2);
+            z-index: 100;
+        }
+        
+        .input-options {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .option-chip {
+            background: #111111;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #708499;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .option-chip.active {
+            background: rgba(51, 144, 236, 0.15);
+            border-color: rgba(51, 144, 236, 0.4);
+            color: #3390ec;
+        }
+        .option-chip:active { transform: scale(0.98); }
+        
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .input-wrapper {
+            flex: 1;
+            background: #111111;
+            border: 1px solid rgba(51, 144, 236, 0.2);
+            border-radius: 24px;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .input-wrapper:focus-within {
+            border-color: #3390ec;
+        }
+        #chatInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 12px 16px;
+            font-size: 15px;
+            outline: none;
+            resize: none;
+            max-height: 120px;
+            min-height: 24px;
+            line-height: 1.4;
+        }
+        #chatInput::placeholder { color: #555; }
+        
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            background: #3390ec;
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .send-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .send-btn:not(:disabled):active {
+            transform: scale(0.95);
+        }
+        
+        /* Credits display */
+        .credits-display {
+            text-align: center;
+            font-size: 11px;
+            color: #555;
+            margin-top: 8px;
+        }
+        .credits-display span { color: #3390ec; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="top-header">
+        <a href="/webapp/dashboard?token={token}" class="back-btn" style="background:rgba(51,144,236,0.15);border:1px solid rgba(51,144,236,0.3);color:#3390ec;padding:8px 12px;border-radius:8px;text-decoration:none;font-size:16px;">←</a>
+        <div class="header-left">
+            <img src="/assets/logo.png" alt="Logo" class="logo-img">
+            <div>
+                <div class="header-title">KALIROOT-AI</div>
+                <div class="header-subtitle">Asistente de Ciberseguridad</div>
+            </div>
+        </div>
+        <button class="new-chat-btn" onclick="newChat()">
+            <span>+</span> Nuevo
+        </button>
+    </div>
+    
+    <!-- CHAT CONTAINER -->
+    <div class="chat-container" id="chatContainer">
+        <div class="welcome-card" id="welcomeCard">
+            <div class="welcome-icon">🤖</div>
+            <div class="welcome-title">¿En qué puedo ayudarte?</div>
+            <div class="welcome-subtitle">Soy tu asistente experto en ciberseguridad y hacking ético. Pregunta sobre herramientas, técnicas o conceptos.</div>
+            <div class="suggestion-chips">
+                <div class="suggestion-chip" onclick="sendSuggestion('¿Cómo usar Nmap para escanear puertos?')">🔍 Escaneo de puertos</div>
+                <div class="suggestion-chip" onclick="sendSuggestion('¿Qué es SQL Injection?')">💉 SQL Injection</div>
+                <div class="suggestion-chip" onclick="sendSuggestion('Dame un script de Python para OSINT')">🐍 Script Python</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INPUT AREA -->
+    <div class="input-area">
+        <div class="input-options">
+            <div class="option-chip" id="optReasoning" onclick="toggleOption('reasoning')">
+                <span>🧠</span> Razonamiento
+            </div>
+            <div class="option-chip" id="optWeb" onclick="toggleOption('web')">
+                <span>🌐</span> Búsqueda Web
+            </div>
+            <div class="option-chip" id="optCode" onclick="toggleOption('code')">
+                <span>💻</span> Código Avanzado
+            </div>
+        </div>
+        <div class="input-row">
+            <div class="input-wrapper">
+                <textarea id="chatInput" rows="1" placeholder="Escribe tu pregunta..." onkeydown="handleKeyDown(event)"></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+        <div class="credits-display">
+            Créditos restantes: <span id="creditsCount">{credits}</span>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        
+        const token = "{token}";
+        const chatContainer = document.getElementById('chatContainer');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const welcomeCard = document.getElementById('welcomeCard');
+        
+        let options = {
+            reasoning: false,
+            web: true,  // Active by default
+            code: false
+        };
+        
+        // Set initial state
+        document.getElementById('optWeb').classList.add('active');
+        
+        function toggleOption(opt) {
+            options[opt] = !options[opt];
+            document.getElementById('opt' + opt.charAt(0).toUpperCase() + opt.slice(1)).classList.toggle('active');
+        }
+        
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+            // Auto-resize textarea
+            setTimeout(() => {
+                chatInput.style.height = 'auto';
+                chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+            }, 0);
+        }
+        
+        function newChat() {
+            chatContainer.innerHTML = '';
+            chatContainer.appendChild(welcomeCard.cloneNode(true));
+            welcomeCard.style.display = 'block';
+        }
+        
+        function sendSuggestion(text) {
+            chatInput.value = text;
+            sendMessage();
+        }
+        
+        function addMessage(content, isUser) {
+            // Hide welcome card
+            const welcome = document.getElementById('welcomeCard');
+            if (welcome) welcome.style.display = 'none';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + (isUser ? 'message-user' : 'message-ai');
+            
+            if (isUser) {
+                msgDiv.innerHTML = `<div class="bubble">${escapeHtml(content)}</div>`;
+            } else {
+                msgDiv.innerHTML = `
+                    <div class="ai-avatar">🤖</div>
+                    <div class="bubble">${content}</div>
+                `;
+            }
+            
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return msgDiv;
+        }
+        
+        function addTypingIndicator() {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message message-ai';
+            msgDiv.id = 'typingIndicator';
+            msgDiv.innerHTML = `
+                <div class="ai-avatar">🤖</div>
+                <div class="bubble">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function sendMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+            
+            // Add user message
+            addMessage(query, true);
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            
+            // Disable input
+            sendBtn.disabled = true;
+            chatInput.disabled = true;
+            
+            // Show typing indicator
+            addTypingIndicator();
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        query: query,
+                        options: options
+                    })
+                });
+                
+                const data = await response.json();
+                removeTypingIndicator();
+                
+                if (data.success) {
+                    addMessage(data.response, false);
+                    // Update credits
+                    document.getElementById('creditsCount').textContent = data.credits_remaining || '∞';
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                } else {
+                    addMessage('⚠️ ' + (data.error || 'Error al procesar tu solicitud'), false);
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                }
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('⚠️ Error de conexión. Inténtalo de nuevo.', false);
+            }
+            
+            // Re-enable input
+            sendBtn.disabled = false;
+            chatInput.disabled = false;
+            chatInput.focus();
+        }
+    </script>
+</body>
+</html>
+"""
 @app.get("/webapp/learning", response_class=HTMLResponse)
 async def webapp_learning(token: str = ""):
     """Main learning route showing all sections. PREMIUM ONLY."""
@@ -3728,3 +4292,81 @@ async def webapp_learning_complete(module_id: int, token: str = ""):
     except Exception as e:
         logger.exception(f"Error completing module: {e}")
         return JSONResponse({"ok": False, "error": str(e)})
+
+# ===== AI CHAT ROUTES =====
+@app.get("/webapp/chat", response_class=HTMLResponse)
+async def webapp_chat(token: str = ""):
+    """Serves the AI Chat interface. PREMIUM ONLY."""
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2><p style='color:#708499'>Vuelve a abrir la app desde el bot</p></div></body></html>", status_code=403)
+        
+        if not is_premium:
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        # Get user credits
+        from database_manager import get_user_credits
+        credits = await get_user_credits(user_id) or 0
+        
+        html = HTML_AI_CHAT.replace("{token}", token)\
+            .replace("{credits}", str(credits) if credits > 0 else "∞")
+        
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Chat page error: {e}")
+        return HTMLResponse(content="<html><body style='background:#000;color:#fff'>Error</body></html>", status_code=500)
+
+@app.post("/api/chat")
+async def api_chat(request: Request):
+    """API endpoint for AI chat interactions."""
+    try:
+        data = await request.json()
+        token = data.get('token')
+        query = data.get('query', '').strip()
+        options = data.get('options', {})
+        
+        user_id, is_premium = verify_token(token)
+        if not user_id:
+            return JSONResponse({"success": False, "error": "Sesión expirada"})
+        if not is_premium:
+            return JSONResponse({"success": False, "error": "Requiere Premium"})
+        
+        if not query:
+            return JSONResponse({"success": False, "error": "Escribe una pregunta"})
+        
+        # Get AI response
+        from ai_handler import get_ai_response
+        from database_manager import get_user_credits
+        
+        # Modify query based on options
+        enhanced_query = query
+        if options.get('reasoning'):
+            enhanced_query = f"[MODO RAZONAMIENTO PROFUNDO] {query}"
+        if options.get('code'):
+            enhanced_query = f"[GENERAR CÓDIGO DETALLADO] {query}"
+        
+        # Get response from AI
+        response_html = await get_ai_response(user_id, enhanced_query)
+        
+        # Get updated credits
+        credits = await get_user_credits(user_id) or 0
+        
+        # Format the response for web display
+        # The response is already in HTML format from ai_handler
+        formatted_response = response_html
+        
+        # Convert Telegram HTML tags to web-friendly format if needed
+        # <pre><code> is already web compatible
+        
+        return JSONResponse({
+            "success": True,
+            "response": formatted_response,
+            "credits_remaining": credits if credits > 0 else "∞"
+        })
+        
+    except Exception as e:
+        logger.exception(f"Chat API error: {e}")
+        return JSONResponse({"success": False, "error": "Error procesando solicitud"})
