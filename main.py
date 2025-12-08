@@ -171,7 +171,10 @@ async def lifespan(app: FastAPI):
         logger.debug('Could not set signal handlers for logging')
 
 
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(lifespan=lifespan)
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
 
 def debug_guard():
@@ -840,20 +843,49 @@ HTML_PREMIUM = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KaliRoot Elite</title>
+    <title>KALIROOT-AI Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #17212b);
-            color: var(--tg-theme-text-color, #ffffff);
+            background: #000000;
+            color: #ffffff;
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: 140px;
+            display: flex;
+            flex-direction: column;
         }
         
-        .header {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+        /* ===== HEADER CON LOGO ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+        }
+        .logo-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* ===== USER HEADER ===== */
+        .user-header {
+            background: #0d0d0d;
             padding: 20px 16px;
             display: flex;
             align-items: center;
@@ -870,6 +902,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
             justify-content: center;
             font-size: 20px;
             font-weight: 700;
+            color: #fff;
         }
         .user-info h2 { font-size: 17px; font-weight: 600; }
         .user-info .badge {
@@ -885,6 +918,10 @@ HTML_PREMIUM = """<!DOCTYPE html>
             margin-top: 4px;
         }
         
+        .main-content {
+            flex: 1;
+        }
+        
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -892,19 +929,20 @@ HTML_PREMIUM = """<!DOCTYPE html>
             padding: 16px;
         }
         .stat-card {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            background: #111111;
             border-radius: 12px;
             padding: 16px 12px;
             text-align: center;
+            border: 1px solid rgba(51, 144, 236, 0.1);
         }
         .stat-value {
             font-size: 24px;
             font-weight: 700;
-            color: var(--tg-theme-button-color, #3390ec);
+            color: #3390ec;
         }
         .stat-label {
             font-size: 11px;
-            color: var(--tg-theme-hint-color, #708499);
+            color: #708499;
             margin-top: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -914,7 +952,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
             padding: 20px 16px 12px;
             font-size: 13px;
             font-weight: 600;
-            color: var(--tg-theme-hint-color, #708499);
+            color: #708499;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -926,13 +964,14 @@ HTML_PREMIUM = """<!DOCTYPE html>
             padding: 0 16px 16px;
         }
         .resource-card {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            background: #111111;
             border-radius: 12px;
             padding: 16px;
             text-decoration: none;
             color: inherit;
             transition: transform 0.2s, box-shadow 0.2s;
             display: block;
+            border: 1px solid rgba(51, 144, 236, 0.1);
         }
         .resource-card:active {
             transform: scale(0.98);
@@ -948,12 +987,12 @@ HTML_PREMIUM = """<!DOCTYPE html>
         }
         .resource-desc {
             font-size: 12px;
-            color: var(--tg-theme-hint-color, #708499);
+            color: #708499;
         }
         .resource-badge {
             display: inline-block;
             background: rgba(51, 144, 236, 0.2);
-            color: var(--tg-theme-button-color, #3390ec);
+            color: #3390ec;
             font-size: 10px;
             font-weight: 600;
             padding: 2px 6px;
@@ -965,7 +1004,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
             padding: 0 16px;
         }
         .action-item {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            background: #111111;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 8px;
@@ -974,6 +1013,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
             gap: 12px;
             text-decoration: none;
             color: inherit;
+            border: 1px solid rgba(51, 144, 236, 0.1);
         }
         .action-icon {
             width: 44px;
@@ -990,16 +1030,17 @@ HTML_PREMIUM = """<!DOCTYPE html>
         .action-icon.orange { background: rgba(251, 146, 60, 0.15); }
         .action-content { flex: 1; }
         .action-title { font-size: 15px; font-weight: 500; }
-        .action-subtitle { font-size: 13px; color: var(--tg-theme-hint-color, #708499); }
-        .action-arrow { color: var(--tg-theme-hint-color, #708499); font-size: 18px; }
+        .action-subtitle { font-size: 13px; color: #708499; }
+        .action-arrow { color: #708499; font-size: 18px; }
         
+        /* ===== BOTTOM BAR ===== */
         .bottom-bar {
             position: fixed;
-            bottom: 0;
+            bottom: 50px;
             left: 0;
             right: 0;
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-top: 1px solid rgba(255,255,255,0.05);
+            background: #0a0a0a;
+            border-top: 1px solid rgba(51, 144, 236, 0.2);
             padding: 12px 16px;
             display: flex;
             gap: 8px;
@@ -1016,19 +1057,49 @@ HTML_PREMIUM = """<!DOCTYPE html>
             align-items: center;
             justify-content: center;
             gap: 6px;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .bottom-btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
         }
         .bottom-btn.primary {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
+            background: #3390ec;
+            color: #fff;
         }
         .bottom-btn.secondary {
-            background: rgba(255,255,255,0.08);
-            color: var(--tg-theme-text-color, #fff);
+            background: rgba(51, 144, 236, 0.15);
+            color: #3390ec;
+            border: 1px solid rgba(51, 144, 236, 0.3);
+        }
+        
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
+    <!-- HEADER CON LOGO -->
+    <div class="top-header">
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="brand-name">KALIROOT-AI</span>
+    </div>
+    
+    <!-- USER HEADER -->
+    <div class="user-header">
         <div class="avatar">{user_initial}</div>
         <div class="user-info">
             <h2>{user_name}</h2>
@@ -1036,80 +1107,88 @@ HTML_PREMIUM = """<!DOCTYPE html>
         </div>
     </div>
     
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-value">{modules_completed}</div>
-            <div class="stat-label">Módulos</div>
+    <div class="main-content">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{modules_completed}</div>
+                <div class="stat-label">Módulos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{credits}</div>
+                <div class="stat-label">Créditos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{days_left}</div>
+                <div class="stat-label">Días</div>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{credits}</div>
-            <div class="stat-label">Créditos</div>
+        
+        <div class="section-title">📥 Recursos Exclusivos</div>
+        <div class="resources-grid">
+            <a href="https://drive.google.com/uc?export=download&id=1example1" class="resource-card">
+                <div class="resource-icon">🐉</div>
+                <div class="resource-title">Kali Pack</div>
+                <div class="resource-desc">Configuraciones y scripts</div>
+                <span class="resource-badge">2.3 GB</span>
+            </a>
+            <a href="https://drive.google.com/uc?export=download&id=1example2" class="resource-card">
+                <div class="resource-icon">📱</div>
+                <div class="resource-title">Termux Elite</div>
+                <div class="resource-desc">Setup móvil completo</div>
+                <span class="resource-badge">450 MB</span>
+            </a>
+            <a href="https://drive.google.com/uc?export=download&id=1example3" class="resource-card">
+                <div class="resource-icon">📡</div>
+                <div class="resource-title">WiFi Toolkit</div>
+                <div class="resource-desc">Wordlists y scripts</div>
+                <span class="resource-badge">1.8 GB</span>
+            </a>
+            <a href="https://drive.google.com/uc?export=download&id=1example4" class="resource-card">
+                <div class="resource-icon">💉</div>
+                <div class="resource-title">Web Pentest</div>
+                <div class="resource-desc">Payloads XSS/SQLi</div>
+                <span class="resource-badge">320 MB</span>
+            </a>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{days_left}</div>
-            <div class="stat-label">Días</div>
+        
+        <div class="section-title">⚡ Acciones Rápidas</div>
+        <div class="action-list">
+            <a href="/webapp/labs?token={token}" class="action-item">
+                <div class="action-icon green">🧪</div>
+                <div class="action-content">
+                    <div class="action-title">Laboratorios</div>
+                    <div class="action-subtitle">Practica en entornos reales</div>
+                </div>
+                <span class="action-arrow">›</span>
+            </a>
+            <a href="/webapp/learning?token={token}" class="action-item">
+                <div class="action-icon blue">📚</div>
+                <div class="action-content">
+                    <div class="action-title">Mi Ruta de Aprendizaje</div>
+                    <div class="action-subtitle">Continúa tu entrenamiento</div>
+                </div>
+                <span class="action-arrow">›</span>
+            </a>
+            <a href="#" class="action-item" onclick="goToBot('ai')">
+                <div class="action-icon purple">🤖</div>
+                <div class="action-content">
+                    <div class="action-title">Asistente IA</div>
+                    <div class="action-subtitle">Pregunta lo que quieras</div>
+                </div>
+                <span class="action-arrow">›</span>
+            </a>
         </div>
     </div>
     
-    <div class="section-title">📥 Recursos Exclusivos</div>
-    <div class="resources-grid">
-        <a href="https://drive.google.com/uc?export=download&id=1example1" class="resource-card">
-            <div class="resource-icon">🐉</div>
-            <div class="resource-title">Kali Pack</div>
-            <div class="resource-desc">Configuraciones y scripts</div>
-            <span class="resource-badge">2.3 GB</span>
-        </a>
-        <a href="https://drive.google.com/uc?export=download&id=1example2" class="resource-card">
-            <div class="resource-icon">📱</div>
-            <div class="resource-title">Termux Elite</div>
-            <div class="resource-desc">Setup móvil completo</div>
-            <span class="resource-badge">450 MB</span>
-        </a>
-        <a href="https://drive.google.com/uc?export=download&id=1example3" class="resource-card">
-            <div class="resource-icon">📡</div>
-            <div class="resource-title">WiFi Toolkit</div>
-            <div class="resource-desc">Wordlists y scripts</div>
-            <span class="resource-badge">1.8 GB</span>
-        </a>
-        <a href="https://drive.google.com/uc?export=download&id=1example4" class="resource-card">
-            <div class="resource-icon">💉</div>
-            <div class="resource-title">Web Pentest</div>
-            <div class="resource-desc">Payloads XSS/SQLi</div>
-            <span class="resource-badge">320 MB</span>
-        </a>
-    </div>
-    
-    <div class="section-title">⚡ Acciones Rápidas</div>
-    <div class="action-list">
-        <a href="/webapp/labs?token={token}" class="action-item">
-            <div class="action-icon green">🧪</div>
-            <div class="action-content">
-                <div class="action-title">Laboratorios</div>
-                <div class="action-subtitle">Practica en entornos reales</div>
-            </div>
-            <span class="action-arrow">›</span>
-        </a>
-        <a href="/webapp/learning?token={token}" class="action-item">
-            <div class="action-icon blue">📚</div>
-            <div class="action-content">
-                <div class="action-title">Mi Ruta de Aprendizaje</div>
-                <div class="action-subtitle">Continúa tu entrenamiento</div>
-            </div>
-            <span class="action-arrow">›</span>
-        </a>
-        <a href="#" class="action-item" onclick="goToBot('ai')">
-            <div class="action-icon purple">🤖</div>
-            <div class="action-content">
-                <div class="action-title">Asistente IA</div>
-                <div class="action-subtitle">Pregunta lo que quieras</div>
-            </div>
-            <span class="action-arrow">›</span>
-        </a>
-    </div>
-    
+    <!-- BOTTOM BAR -->
     <div class="bottom-bar">
         <button class="bottom-btn secondary" onclick="closeApp()">Cerrar</button>
         <button class="bottom-btn primary" onclick="goToBot('menu')">📱 Ir al Bot</button>
+    </div>
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Todos los derechos reservados.</p>
     </div>
     
     <script>
@@ -1759,69 +1838,111 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #1a1a2e;
-            --card-bg: #16213e;
-            --accent: #e94560;
-            --text: #ffffff;
-            --text-sec: #b2b2b2;
-            --code-bg: #0f3460;
+            --bg-color: var(--tg-theme-bg-color, #17212b);
+            --card-bg: var(--tg-theme-secondary-bg-color, #232e3c);
+            --text: var(--tg-theme-text-color, #ffffff);
+            --hint: var(--tg-theme-hint-color, #708499);
+            --button: var(--tg-theme-button-color, #3390ec);
+            --button-text: var(--tg-theme-button-text-color, #ffffff);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-color);
             color: var(--text);
-            padding-bottom: 100px;
+            padding-bottom: 130px;
         }
         
-        .module-hero {
-            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
-            padding: 30px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+        .header-image {
+            width: 100%;
+            height: 240px;
+            background-image: url('{module_image}');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            margin-bottom: 24px;
         }
+        .header-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, var(--bg-color) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.3) 100%);
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 24px;
+        }
+        
         .module-badge {
-            background: rgba(233, 69, 96, 0.2);
-            color: #e94560;
+            background: rgba(51, 144, 236, 0.2);
+            color: var(--button);
+            backdrop-filter: blur(8px);
             font-size: 11px;
-            font-weight: 700;
-            padding: 4px 12px;
+            font-weight: 800;
+            padding: 6px 14px;
             border-radius: 20px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            display: inline-block;
-            margin-bottom: 10px;
+            align-self: flex-start;
+            margin-bottom: 12px;
+            border: 1px solid rgba(51, 144, 236, 0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .module-badge.completed {
             background: rgba(74, 222, 128, 0.2);
             color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.3);
         }
-        h1 { font-size: 22px; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
-        .hero-desc { color: var(--text-sec); font-size: 14px; }
         
-        /* AI Content Styles */
-        #ai-content { padding: 20px; min-height: 200px; }
+        h1 { 
+            font-size: 26px; 
+            font-weight: 800; 
+            line-height: 1.2;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            margin: 0;
+        }
         
-        .content-block { margin-bottom: 25px; animation: fadeIn 0.5s ease; }
+        .hero-desc {
+            color: var(--hint);
+            font-size: 15px;
+            line-height: 1.6;
+            padding: 0 24px;
+            margin-bottom: 30px;
+        }
+
+        /* AI Content */
+        #ai-content { padding: 0 24px; min-height: 200px; }
+        
+        .content-block { margin-bottom: 25px; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         .section-title {
-            color: #3390ec;
-            font-size: 16px;
+            color: var(--button);
+            font-size: 17px;
             font-weight: 700;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 10px;
+            letter-spacing: 0.5px;
         }
-        p { line-height: 1.6; font-size: 15px; color: #e0e0e0; margin-bottom: 10px; }
         
-        /* Code Blocks */
+        p { 
+            line-height: 1.7; 
+            font-size: 16px; 
+            color: var(--text); 
+            opacity: 0.9;
+            margin-bottom: 16px; 
+        }
+        
+        /* Code */
         pre {
-            background: #0d1117;
-            border-radius: 8px;
-            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 18px;
             overflow-x: auto;
-            border: 1px solid #30363d;
-            margin: 10px 0;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin: 20px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
         code {
             font-family: 'JetBrains Mono', monospace;
@@ -1831,76 +1952,109 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
         
         /* Tip Box */
         .tip-box {
-            background: rgba(233, 69, 96, 0.1);
-            border-left: 3px solid #e94560;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
+            background: rgba(51, 144, 236, 0.08);
+            border-left: 3px solid var(--button);
+            padding: 16px;
+            border-radius: 8px;
+            margin: 24px 0;
         }
-        .tip-title { color: #e94560; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
         
-        /* Loading */
-        .loading-container { text-align: center; padding: 40px; }
-        .spinner {
+        /* Floating Actions */
+        .bottom-actions {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--bg-color); /* Fallback */
+            background: rgba(23, 33, 43, 0.95);
+            backdrop-filter: blur(16px);
+            padding: 16px 24px 34px 24px; /* Extra padding for iPhone home indicator */
+            border-top: 1px solid rgba(255,255,255,0.08);
+            z-index: 100;
+            display: flex; flex-direction: column; gap: 12px;
+            box-shadow: 0 -4px 30px rgba(0,0,0,0.3);
+        }
+        
+        .action-btn {
+            width: 100%; 
+            padding: 16px; 
+            border: none; 
+            border-radius: 14px;
+            font-size: 16px; font-weight: 700; 
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative; overflow: hidden;
+            text-decoration: none;
+        }
+        .action-btn:active { transform: scale(0.96); }
+        
+        .action-btn.primary { 
+            background: var(--button); 
+            color: var(--button-text); 
+            box-shadow: 0 8px 20px rgba(51, 144, 236, 0.3);
+        }
+        .action-btn.success {
+            background: #4ade80; color: #002b10;
+            box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
+        }
+        .action-btn.secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+            font-size: 14px;
+            padding: 14px;
+        }
+        
+        .regen-btn {
+            background: transparent;
+            border: 1px solid var(--hint);
+            color: var(--hint);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 40px auto 20px;
+            display: block;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        /* Spinner */
+        .loading-container { text-align: center; padding: 60px 20px; }
+         .spinner {
             width: 40px; height: 40px;
             border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: #3390ec;
+            border-top-color: var(--button);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 15px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Actions */
-        .bottom-actions {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(22, 33, 62, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 20px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .action-btn {
-            width: 100%; padding: 12px; border: none; border-radius: 8px;
-            font-weight: 600; cursor: pointer; font-size: 14px;
-            transition: transform 0.1s;
-        }
-        .action-btn:active { transform: scale(0.98); }
-        .btn-primary { background: #3390ec; color: white; }
-        .btn-success { background: #4ade80; color: #002b10; }
-        .btn-sec { background: rgba(255,255,255,0.1); color: white; }
-        .nav-row { display: flex; gap: 10px; }
-        
-        .regen-btn {
-            background: transparent; border: 1px solid rgba(255,255,255,0.2);
-            color: var(--text-sec); padding: 8px 16px; border-radius: 20px;
-            font-size: 12px; margin: 0 auto; display: block; cursor: pointer;
-        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-    <div class="module-hero">
-        <div class="module-badge {badge_class}">Módulo {module_id}</div>
-        <h1>{module_title}</h1>
-        <p class="hero-desc">{module_desc}</p>
+    <div class="header-image">
+        <div class="header-overlay">
+            <div class="module-badge {badge_class}">Módulo {module_id}</div>
+            <h1>{module_title}</h1>
+        </div>
     </div>
+    
+    <p class="hero-desc">{module_desc}</p>
 
     <div id="ai-content">
         <div class="loading-container">
             <div class="spinner"></div>
-            <div style="color: #708499; font-size: 14px;">Contactando con KaliRoot AI...</div>
-            <div style="color: #4a5c6b; font-size: 11px; margin-top: 5px;">Generando lección personalizada</div>
+            <div style="color: var(--hint); font-size: 14px;">Contactando con KaliRoot AI...</div>
         </div>
     </div>
     
-    <button class="regen-btn" onclick="loadContent(true)">🔄 Regenerar Contenido con IA</button>
-    <div style="height: 60px;"></div>
+    <button class="regen-btn" onclick="loadContent(true)">🔄 Actualizar Contenido</button>
 
     <div class="bottom-actions">
-        <div id="statusMsg" style="text-align: center; font-size: 13px; margin-bottom: 5px; display: none;"></div>
+        <div id="statusMsg" style="text-align: center; font-size: 13px; margin-bottom: 8px; display: none;"></div>
+        
         {complete_button}
-        <div class="nav-row">
+        
+        <div class="nav-row" style="display: flex; gap: 12px;">
+            <button class="action-btn secondary" onclick="window.location.href='/webapp/learning?token={token}'" style="flex: 0 0 60px; font-size: 20px;">🏠</button>
             {prev_button}
             {next_button}
         </div>
@@ -1909,18 +2063,20 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.enableClosingConfirmation();
         
         const moduleId = {module_id};
         const token = "{token}";
         const contentDiv = document.getElementById('ai-content');
         
         function loadContent(force = false) {
-            contentDiv.innerHTML = `
+            if(force) {
+                 contentDiv.innerHTML = `
                 <div class="loading-container">
                     <div class="spinner"></div>
-                    <div style="color: #708499; font-size: 14px;">${force ? 'Regenerando...' : 'Analizando módulo...'}</div>
-                </div>
-            `;
+                    <div style="color: var(--hint);">Regenerando...</div>
+                </div>`;
+            }
             
             fetch('/api/learning/get_content', {
                 method: 'POST',
@@ -1933,7 +2089,7 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
                     contentDiv.innerHTML = data.html;
                 } else {
                     contentDiv.innerHTML = `<div class="tip-box" style="border-color: #ff4757; background: rgba(255, 71, 87, 0.1);">
-                        <div class="tip-title" style="color: #ff4757;">⚠️ Error de Sistema</div>
+                        <p style="color:#ff4757; font-weight:bold;">⚠️ Error de Sistema</p>
                         <p>${data.error}</p>
                         <button class="regen-btn" onclick="loadContent(true)">Reintentar</button>
                     </div>`;
@@ -2428,10 +2584,10 @@ async def webapp_learning_module(module_id: int, token: str = ""):
         else:
             next_button = '<button class="action-btn secondary" disabled>Siguiente →</button>'
         
-        
         html = HTML_LEARNING_MODULE.replace("{module_id}", str(module_id))\
             .replace("{module_title}", module['title'])\
             .replace("{module_desc}", module['desc'])\
+            .replace("{module_image}", "/" + module['img'])\
             .replace("{badge_class}", badge_class)\
             .replace("{complete_button}", complete_button)\
             .replace("{prev_button}", prev_button)\
