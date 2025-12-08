@@ -24,11 +24,22 @@ def is_url_valid(url: str) -> bool:
         return False
 
 # --- MENUS ---
-MAIN_MENU = [
-    [KeyboardButton("🛒 Tienda / Recargas"), KeyboardButton("⚙️ Mi Cuenta")],
+# Menú para usuarios FREE (más persuasivo para convertir a Premium)
+MAIN_MENU_FREE = [
+    [KeyboardButton("💎 DESBLOQUEAR PREMIUM")],
+    [KeyboardButton("🤖 Asistente IA"), KeyboardButton("⚙️ Mi Cuenta")],
     [KeyboardButton("👥 Comunidad"), KeyboardButton("🛠️ Tools")],
-    [KeyboardButton("🧹 Limpiar Chat")]
+    [KeyboardButton("🛒 Tienda / Recargas")]
 ]
+
+# Menú para usuarios PREMIUM (experiencia limpia)
+# El Dashboard se abre via InlineKeyboardButton en el mensaje de bienvenida
+MAIN_MENU_PREMIUM = [
+    [KeyboardButton("⚙️ Mi Cuenta"), KeyboardButton("📞 Soporte VIP")]
+]
+
+# Backward compatibility
+MAIN_MENU = MAIN_MENU_FREE
 
 TOOLS_MENU = [
     [KeyboardButton("🌐 Web Tools"), KeyboardButton("📄 PDF Tools")],
@@ -98,46 +109,93 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username = update.effective_user.username
         await register_user_if_not_exists(user_id, first_name=first_name, last_name=last_name, username=username)
         
-        welcome_msg = (
-            f"👋 <b>¡Bienvenido al Cuartel General, {html.escape(first_name or 'Agente')}!</b>\n\n"
-            "Has establecido conexión segura con <b>KaliRoot Bot v2.0</b> 🔒\n"
-            "Tu suite definitiva de inteligencia ofensiva y entrenamiento en ciberseguridad.\n\n"
+        # Check if user is Premium
+        is_premium = await is_user_subscribed(user_id)
+        
+        if is_premium:
+            # ===== MENSAJE DE BIENVENIDA PREMIUM =====
+            welcome_msg = (
+                f"👑 <b>¡Bienvenido de vuelta, {html.escape(first_name or 'Élite')}!</b>\n\n"
+                "Tu acceso <b>PREMIUM</b> está activo. 💎\n\n"
+                "🚀 <b>TU PANEL EXCLUSIVO:</b>\n"
+                "▪️ 🧠 IA sin límites ni censura\n"
+                "▪️ 🎓 100 Módulos de Academia Hacker\n"
+                "▪️ 🧪 Laboratorios Prácticos Ilimitados\n"
+                "▪️ 📜 Scripts y Recursos VIP\n"
+                "▪️ 🏅 Certificados Oficiales\n\n"
+                "<i>Toca el botón para acceder a tu Dashboard completo:</i>"
+            )
             
-            "🔻 <b>ACCESO PÚBLICO (Nivel Free):</b>\n"
-            "▫️ 🤖 Asistente IA Básico (Consultas Limitadas)\n"
-            "▫️ 📚 Diccionario de Comandos Linux\n"
-            "▫️ 🛠️ Herramientas de Red Básicas\n"
-            "▫️ 👥 Acceso a la Comunidad Pública\n\n"
+            # Botón para abrir WebApp
+            from telegram import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+            base_url = TELEGRAM_WEBHOOK_URL.replace("/webhook/telegram", "") if TELEGRAM_WEBHOOK_URL else ""
+            keyboard = []
+            if base_url:
+                from token_manager import generate_session_token
+                token = generate_session_token(user_id, is_premium=True)
+                webapp_url = f"{base_url}/webapp/dashboard?token={token}"
+                keyboard = [[InlineKeyboardButton("🚀 ABRIR DASHBOARD PREMIUM", web_app=WebAppInfo(url=webapp_url))]]
             
-            "💎 <b>ACCESO ÉLITE (Suscripción Premium):</b>\n"
-            "▪️ 🧠 <b>Cerebro God Mode:</b> IA sin censura ni límites.\n"
-            "▪️ 🎓 <b>Academia Hacker:</b> Ruta Zero to Hero con WebApp.\n"
-            "▪️ 🧪 <b>Laboratorios Reales:</b> Simulador de hacking interactivo.\n"
-            "▪️ ☁️ <b>Kali Cloud & Scripts:</b> Recursos VIP exclusivos.\n"
-            "▪️ 🏅 <b>Certificaciones Oficiales:</b> Valida tu nivel.\n\n"
-            
-            "<i>«No busques información, busca superioridad.»</i>\n\n"
-            "👇 <b>INICIA TU OPERACIÓN AHORA:</b>"
-        )
-        # Welcome Image
-        try:
-            with open('assets/welcome.jpg', 'rb') as img:
-                await context.bot.send_photo(
+            # Enviar imagen premium
+            try:
+                with open('assets/welcome_premium.jpg', 'rb') as img:
+                    await context.bot.send_photo(
+                        chat_id=update.effective_chat.id,
+                        photo=img,
+                        caption=welcome_msg,
+                        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
+                        parse_mode=ParseMode.HTML
+                    )
+            except Exception as e:
+                logger.error(f"Error sending premium welcome image: {e}")
+                await context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    photo=img,
-                    caption=welcome_msg,
-                    reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True),
+                    text=welcome_msg,
+                    reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
                     parse_mode=ParseMode.HTML
                 )
-        except Exception as e:
-            logger.error(f"Error sending welcome image: {e}")
-            # Fallback to text only
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=welcome_msg,
-                reply_markup=ReplyKeyboardMarkup(MAIN_MENU, resize_keyboard=True),
-                parse_mode=ParseMode.HTML
+        else:
+            # ===== MENSAJE DE BIENVENIDA FREE =====
+            welcome_msg = (
+                f"👋 <b>¡Hola, {html.escape(first_name or 'Agente')}!</b>\n\n"
+                "Bienvenido a <b>KaliRoot Bot</b> 🔒\n"
+                "Tu asistente de ciberseguridad con IA.\n\n"
+                
+                "⚡ <b>PLAN GRATUITO:</b>\n"
+                "▫️ 🤖 Asistente IA (3 consultas/día)\n"
+                "▫️ 🛠️ Herramientas básicas\n"
+                "▫️ 👥 Comunidad pública\n\n"
+                
+                "💎 <b>¿QUIERES MÁS?</b>\n"
+                "Con <b>Premium ($10/mes)</b> obtienes:\n"
+                "✅ IA sin límites ni censura\n"
+                "✅ 100 Laboratorios de hacking real\n"
+                "✅ Academia completa Zero to Hero\n"
+                "✅ Certificados oficiales\n"
+                "✅ +250 créditos IA mensuales\n\n"
+                
+                "🔥 <b>¡Los primeros 100 usuarios tienen 50% OFF!</b>\n\n"
+                "👇 Escribe tu pregunta o usa el menú:"
             )
+            
+            # Enviar imagen free
+            try:
+                with open('assets/welcome.jpg', 'rb') as img:
+                    await context.bot.send_photo(
+                        chat_id=update.effective_chat.id,
+                        photo=img,
+                        caption=welcome_msg,
+                        reply_markup=ReplyKeyboardMarkup(MAIN_MENU_FREE, resize_keyboard=True),
+                        parse_mode=ParseMode.HTML
+                    )
+            except Exception as e:
+                logger.error(f"Error sending welcome image: {e}")
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=welcome_msg,
+                    reply_markup=ReplyKeyboardMarkup(MAIN_MENU_FREE, resize_keyboard=True),
+                    parse_mode=ParseMode.HTML
+                )
         return
 
     if text == "/suscribirse" or text == "/comprar" or text == "🚀 Ver Planes de Suscripción":
@@ -168,7 +226,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- MENU NAVIGATION ---
     if text == "🔙 Volver al Menú Principal":
         # No cleaning here (Generic back)
-        await send_menu(update, "Regresando al cuartel general...", MAIN_MENU)
+        await send_menu(update, "Regresando al cuartel general...", MAIN_MENU_FREE)
+        return
+    
+    # Handler para el botón de desbloquear premium
+    if text == "💎 DESBLOQUEAR PREMIUM":
+        from nowpayments_handler import create_payment_invoice
+        from database_manager import set_subscription_pending
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        inv_sub = create_payment_invoice(10.0, user_id, "subscription")
+        
+        msg = (
+            "💎 <b>DESBLOQUEA TODO EL PODER</b>\n\n"
+            "Únete a la élite de hackers y obtén acceso ilimitado:\n\n"
+            "🚀 <b>BENEFICIOS PREMIUM:</b>\n"
+            "✅ <b>IA Sin Límites</b> - Consultas ilimitadas sin censura\n"
+            "✅ <b>100 Laboratorios</b> - Hacking real paso a paso\n"
+            "✅ <b>Academia Completa</b> - De cero a profesional\n"
+            "✅ <b>WebApp Exclusiva</b> - Dashboard personalizado\n"
+            "✅ <b>Certificados</b> - Valida tu conocimiento\n"
+            "✅ <b>+250 Créditos/Mes</b> - Bonus automático\n"
+            "✅ <b>Soporte VIP</b> - Respuesta prioritaria\n\n"
+            "💰 <b>PRECIO:</b> Solo $10 USD/mes\n\n"
+            "🔥 <b>OFERTA LIMITADA:</b> ¡50% OFF primeros 100 usuarios!\n\n"
+            "👇 <b>Activa ahora con criptomonedas:</b>"
+        )
+        
+        keyboard = []
+        if inv_sub and inv_sub.get('invoice_url') and is_url_valid(inv_sub['invoice_url']):
+            await set_subscription_pending(user_id, inv_sub.get('invoice_id'))
+            keyboard.append([InlineKeyboardButton("🚀 ACTIVAR PREMIUM ($10)", url=inv_sub['invoice_url'])])
+        
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
+        return
+    
+    # Handler para Asistente IA (versión Free)
+    if text == "🤖 Asistente IA":
+        msg = (
+            "🤖 <b>ASISTENTE IA KALIROOT</b>\n\n"
+            "Escríbeme tu pregunta sobre ciberseguridad.\n\n"
+            "📌 <b>Ejemplos:</b>\n"
+            "• ¿Cómo usar Nmap para escanear puertos?\n"
+            "• ¿Qué es SQL Injection?\n"
+            "• Dame un script para OSINT\n\n"
+            "⚠️ <b>Plan Free:</b> 3 consultas/día\n"
+            "💎 <b>Premium:</b> Consultas ilimitadas\n\n"
+            "👇 <b>Escribe tu pregunta:</b>"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return
 
     # --- TOOLS MENU ---
@@ -237,29 +343,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return
 
-    # LIMPIAR CHAT - Muestra advertencia con botón de confirmación
+    # LIMPIAR CHAT - Eliminado (ya no está en el menú)
+    # El callback aún existe por compatibilidad
     if text == "🧹 Limpiar Chat":
-        await clean_trigger_message(update)
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-        
-        warning_msg = (
-            "🧹 <b>LIMPIEZA DE CHAT</b>\n\n"
-            "⚠️ <b>¡ADVERTENCIA!</b>\n\n"
-            "Estás a punto de <b>reiniciar completamente</b> tu experiencia en KaliRoot.\n\n"
-            "Esta acción:\n"
-            "• 🗑️ Intentará borrar los mensajes recientes\n"
-            "• 🔄 Reiniciará el bot con el menú principal\n"
-            "• 📱 Te mostrará el mensaje de bienvenida\n\n"
-            "<i>Nota: Algunos mensajes muy antiguos no podrán ser eliminados por limitaciones de Telegram.</i>\n\n"
-            "¿Deseas continuar?"
+        await update.message.reply_text("Esta función ha sido removida. Usa /start para reiniciar.", parse_mode=ParseMode.HTML)
+        return
+    
+    # Soporte VIP (para usuarios premium)
+    if text == "📞 Soporte VIP":
+        support_username = "KaliRootHack"
+        msg = (
+            "👑 <b>SOPORTE VIP PREMIUM</b>\n\n"
+            "Como miembro Premium, tienes acceso a soporte prioritario.\n\n"
+            "📞 <b>Canal directo:</b> Respuesta en menos de 2 horas\n"
+            "🛠️ <b>Ayuda técnica:</b> Resolución de problemas\n"
+            "💡 <b>Asesoría:</b> Orientación personalizada\n\n"
+            "👇 <b>Toca para contactar:</b>"
         )
-        
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🗑️ Sí, Limpiar Todo", callback_data="confirm_clear_chat")],
-            [InlineKeyboardButton("❌ Cancelar", callback_data="cancel_clear_chat")]
-        ])
-        
-        await update.message.reply_text(warning_msg, reply_markup=keyboard, parse_mode=ParseMode.HTML)
+        from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+        support_url = f"https://t.me/{support_username}"
+        keyboard = [[InlineKeyboardButton("💬 Contactar Soporte VIP", url=support_url)]]
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
         return
 
     # Learning system is now only available through the Premium WebApp

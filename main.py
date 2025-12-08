@@ -1098,12 +1098,32 @@ HTML_PREMIUM = """<!DOCTYPE html>
         <span class="brand-name">KALIROOT-AI</span>
     </div>
     
-    <!-- USER HEADER -->
+    <!-- USER HEADER MEJORADO -->
     <div class="user-header">
-        <div class="avatar">{user_initial}</div>
+        <div class="avatar" style="position:relative;">
+            {user_initial}
+            <div style="position:absolute;bottom:-4px;right:-4px;background:linear-gradient(135deg,#3390ec,#00d4ff);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid #0a0a0a;">
+                {level}
+            </div>
+        </div>
         <div class="user-info">
             <h2>{user_name}</h2>
             <span class="badge">👑 ELITE MEMBER</span>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:12px;">
+                <span style="font-size:12px;color:#708499;"><b style="color:#4ade80;">⚡ {xp} XP</b></span>
+                <span style="font-size:12px;color:#708499;">Nivel <b style="color:#3390ec;">{level}</b></span>
+            </div>
+            <!-- BARRA DE PROGRESO XP -->
+            <div style="margin-top:8px;width:100%;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#555;margin-bottom:4px;">
+                    <span>Nivel {level}</span>
+                    <span>Nivel {next_level}</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.1);border-radius:10px;height:6px;overflow:hidden;">
+                    <div style="height:100%;background:linear-gradient(90deg,#3390ec,#4ade80);border-radius:10px;width:{xp_progress}%;transition:width 0.5s;"></div>
+                </div>
+                <div style="font-size:9px;color:#555;margin-top:4px;text-align:center;">{xp_to_next} XP para siguiente nivel</div>
+            </div>
         </div>
     </div>
     
@@ -1113,10 +1133,11 @@ HTML_PREMIUM = """<!DOCTYPE html>
                 <div class="stat-value">{modules_completed}</div>
                 <div class="stat-label">Módulos</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value">{credits}</div>
+            <a href="/webapp/credits?token={token}" class="stat-card" style="text-decoration:none;cursor:pointer;border:1px solid rgba(51,144,236,0.3);position:relative;">
+                <div class="stat-value" style="color:#4ade80;">{credits}</div>
                 <div class="stat-label">Créditos</div>
-            </div>
+                <div style="position:absolute;top:6px;right:6px;font-size:12px;background:#3390ec;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;">+</div>
+            </a>
             <div class="stat-card">
                 <div class="stat-value">{days_left}</div>
                 <div class="stat-label">Días</div>
@@ -1330,6 +1351,8 @@ async def webapp_dashboard(token: str):
         credits = 0
         completed_modules = []
         days_left = 0
+        level = 1
+        xp = 0
         
         try:
             from database_manager import get_user_profile, get_user_credits, get_user_completed_modules
@@ -1338,6 +1361,8 @@ async def webapp_dashboard(token: str):
             if profile:
                 user_name = profile.get('first_name') or 'Elite'
                 user_initial = user_name[0].upper() if user_name else 'E'
+                level = profile.get('level', 1) or 1
+                xp = profile.get('xp', 0) or 0
                 
                 # Calculate days left
                 expiry_str = profile.get('subscription_expiry_date')
@@ -1357,11 +1382,26 @@ async def webapp_dashboard(token: str):
             logger.error(f"Error fetching user data for dashboard: {e}")
             # Continue with default values
         
+        # Calculate XP progress for level system
+        # Level formula: XP needed for level N = N * 100
+        xp_for_current_level = (level - 1) * 100
+        xp_for_next_level = level * 100
+        xp_in_current_level = xp - xp_for_current_level
+        xp_range = xp_for_next_level - xp_for_current_level
+        xp_progress = min(100, int((xp_in_current_level / xp_range) * 100)) if xp_range > 0 else 0
+        xp_to_next = max(0, xp_for_next_level - xp)
+        next_level = level + 1
+        
         html = HTML_PREMIUM.replace("{user_name}", user_name)\
             .replace("{user_initial}", user_initial)\
             .replace("{modules_completed}", str(len(completed_modules)))\
             .replace("{credits}", str(credits))\
             .replace("{days_left}", str(days_left))\
+            .replace("{level}", str(level))\
+            .replace("{xp}", str(xp))\
+            .replace("{next_level}", str(next_level))\
+            .replace("{xp_progress}", str(xp_progress))\
+            .replace("{xp_to_next}", str(xp_to_next))\
             .replace("{token}", token)
         
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
@@ -3766,6 +3806,230 @@ HTML_AI_CHAT = """
 </body>
 </html>
 """
+
+# ===== CREDITS RECHARGE TEMPLATE =====
+HTML_CREDITS = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Recargar Créditos - KALIROOT-AI</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            color: #fff;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+        
+        .top-header {
+            background: #0a0a0a;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .back-btn {
+            background: rgba(51,144,236,0.15);
+            border: 1px solid rgba(51,144,236,0.3);
+            color: #3390ec;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .logo-img {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+        }
+        .header-title {
+            font-size: 16px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero-section {
+            text-align: center;
+            padding: 32px 16px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #111827 50%, #0f172a 100%);
+            border-bottom: 1px solid rgba(51, 144, 236, 0.15);
+        }
+        .hero-icon { font-size: 56px; margin-bottom: 16px; }
+        .hero-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+        .hero-subtitle { color: #708499; font-size: 14px; }
+        
+        .current-credits {
+            background: #111111;
+            margin: 20px 16px;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid rgba(51,144,236,0.2);
+        }
+        .credits-label { font-size: 12px; color: #708499; margin-bottom: 4px; }
+        .credits-value { font-size: 48px; font-weight: 800; color: #4ade80; }
+        .credits-unit { font-size: 14px; color: #708499; }
+        
+        .plans-container { padding: 0 16px; }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #708499;
+            margin: 24px 0 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .plan-card {
+            background: #111111;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        .plan-card:active { transform: scale(0.98); }
+        .plan-card.popular {
+            border-color: #3390ec;
+            background: linear-gradient(135deg, rgba(51,144,236,0.1) 0%, rgba(0,212,170,0.05) 100%);
+        }
+        .plan-card.popular::before {
+            content: '🔥 MÁS POPULAR';
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: #3390ec;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .plan-info { flex: 1; }
+        .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .plan-credits { font-size: 24px; font-weight: 800; color: #4ade80; }
+        .plan-bonus { font-size: 12px; color: #3390ec; margin-top: 4px; }
+        .plan-price {
+            background: #3390ec;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            min-width: 90px;
+        }
+        .plan-price:active { opacity: 0.9; }
+        
+        .info-section {
+            margin: 24px 16px;
+            padding: 20px;
+            background: rgba(51,144,236,0.1);
+            border: 1px solid rgba(51,144,236,0.2);
+            border-radius: 12px;
+        }
+        .info-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+        .info-item { font-size: 13px; color: #708499; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .info-item::before { content: '✓'; color: #4ade80; }
+        
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .footer-text { font-size: 11px; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="top-header">
+        <a href="/webapp/dashboard?token={token}" class="back-btn">←</a>
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="header-title">KALIROOT-AI</span>
+    </div>
+    
+    <div class="hero-section">
+        <div class="hero-icon">⚡</div>
+        <div class="hero-title">Recarga de Créditos</div>
+        <div class="hero-subtitle">Potencia tu IA sin límites</div>
+    </div>
+    
+    <div class="current-credits">
+        <div class="credits-label">CRÉDITOS DISPONIBLES</div>
+        <div class="credits-value">{credits}</div>
+        <div class="credits-unit">créditos de IA</div>
+    </div>
+    
+    <div class="plans-container">
+        <div class="section-title">💰 Elige tu paquete</div>
+        
+        <div class="plan-card" style="position:relative;">
+            <div class="plan-info">
+                <div class="plan-name">🥉 Starter</div>
+                <div class="plan-credits">400</div>
+                <div style="font-size:12px;color:#708499;">créditos</div>
+            </div>
+            <a href="{invoice_starter}" class="plan-price" target="_blank">$7</a>
+        </div>
+        
+        <div class="plan-card popular" style="position:relative;">
+            <div class="plan-info">
+                <div class="plan-name">🥈 Hacker Pro</div>
+                <div class="plan-credits">900</div>
+                <div class="plan-bonus">+12% Extra</div>
+            </div>
+            <a href="{invoice_pro}" class="plan-price" target="_blank">$14</a>
+        </div>
+        
+        <div class="plan-card" style="position:relative;">
+            <div class="plan-info">
+                <div class="plan-name">🥇 Elite</div>
+                <div class="plan-credits">1500</div>
+                <div class="plan-bonus">🔥 Mejor Valor</div>
+            </div>
+            <a href="{invoice_elite}" class="plan-price" target="_blank">$20</a>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-title">¿Qué puedes hacer con créditos?</div>
+        <div class="info-item">Consultas ilimitadas a la IA</div>
+        <div class="info-item">Generación de scripts avanzados</div>
+        <div class="info-item">Análisis de seguridad detallados</div>
+        <div class="info-item">Respuestas sin censura ni límites</div>
+    </div>
+    
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Pago seguro con criptomonedas.</p>
+    </div>
+
+    <script>
+        const tg = window.Telegram && window.Telegram.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+    </script>
+</body>
+</html>
+"""
 @app.get("/webapp/learning", response_class=HTMLResponse)
 async def webapp_learning(token: str = ""):
     """Main learning route showing all sections. PREMIUM ONLY."""
@@ -4370,3 +4634,44 @@ async def api_chat(request: Request):
     except Exception as e:
         logger.exception(f"Chat API error: {e}")
         return JSONResponse({"success": False, "error": "Error procesando solicitud"})
+
+# ===== CREDITS PAGE ROUTE =====
+@app.get("/webapp/credits", response_class=HTMLResponse)
+async def webapp_credits(token: str = ""):
+    """Serves the Credits Recharge page. PREMIUM ONLY."""
+    try:
+        user_id, is_premium = verify_token(token)
+        
+        if not user_id:
+            return HTMLResponse(content="<html><body style='background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif'><div style='text-align:center'><h2>⚠️ Sesión Expirada</h2><p style='color:#708499'>Vuelve a abrir la app desde el bot</p></div></body></html>", status_code=403)
+        
+        if not is_premium:
+            return HTMLResponse(content=f"<html><head><meta http-equiv='refresh' content='0;url=/webapp/upsell?token={token}'></head></html>", media_type="text/html; charset=utf-8")
+        
+        # Get user credits
+        from database_manager import get_user_credits
+        from nowpayments_handler import create_payment_invoice
+        
+        credits = await get_user_credits(user_id) or 0
+        
+        # Generate payment invoices
+        inv_starter = create_payment_invoice(7.0, user_id, "400_credits")
+        inv_pro = create_payment_invoice(14.0, user_id, "900_credits")
+        inv_elite = create_payment_invoice(20.0, user_id, "1500_credits")
+        
+        # Get invoice URLs or fallback
+        url_starter = inv_starter.get('invoice_url', '#') if inv_starter else '#'
+        url_pro = inv_pro.get('invoice_url', '#') if inv_pro else '#'
+        url_elite = inv_elite.get('invoice_url', '#') if inv_elite else '#'
+        
+        html = HTML_CREDITS.replace("{token}", token)\
+            .replace("{credits}", str(credits))\
+            .replace("{invoice_starter}", url_starter)\
+            .replace("{invoice_pro}", url_pro)\
+            .replace("{invoice_elite}", url_elite)
+        
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+        
+    except Exception as e:
+        logger.exception(f"Credits page error: {e}")
+        return HTMLResponse(content="<html><body style='background:#000;color:#fff'>Error</body></html>", status_code=500)
