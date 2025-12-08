@@ -1454,52 +1454,70 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ruta de Aprendizaje - KaliRoot</title>
+    <title>Ruta de Aprendizaje - KALIROOT-AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #17212b);
-            color: var(--tg-theme-text-color, #ffffff);
+            background: #000000;
+            color: #ffffff;
             min-height: 100vh;
-            padding-bottom: 100px;
+            padding-bottom: 150px;
+            display: flex;
+            flex-direction: column;
         }
         
-        .header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        /* ===== HEADER CON LOGO ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+        }
+        .logo-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* ===== HERO SECTION ===== */
+        .hero-section {
+            background: #0d0d0d;
             padding: 24px 16px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(51, 144, 236, 0.1) 0%, transparent 50%);
-            animation: pulse 4s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        .header-content { position: relative; z-index: 1; }
-        .header-icon { font-size: 48px; margin-bottom: 12px; }
-        .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-        .header-subtitle { 
-            color: var(--tg-theme-hint-color, #708499); 
+        .hero-icon { font-size: 48px; margin-bottom: 12px; }
+        .hero-section h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .hero-subtitle { 
+            color: #708499; 
             font-size: 14px;
         }
         
+        .main-content {
+            flex: 1;
+        }
+        
         .progress-bar-container {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            background: #111111;
             padding: 16px;
             margin: 16px;
             border-radius: 12px;
+            border: 1px solid rgba(51, 144, 236, 0.1);
         }
         .progress-label {
             display: flex;
@@ -1507,9 +1525,9 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
             margin-bottom: 8px;
             font-size: 13px;
         }
-        .progress-label span:first-child { color: var(--tg-theme-hint-color, #708499); }
+        .progress-label span:first-child { color: #708499; }
         .progress-label span:last-child { 
-            color: var(--tg-theme-button-color, #3390ec);
+            color: #3390ec;
             font-weight: 600;
         }
         .progress-track {
@@ -1529,7 +1547,7 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
             padding: 0 16px;
         }
         .section-card {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            background: #111111;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 12px;
@@ -1538,12 +1556,13 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
             display: block;
             transition: transform 0.2s, box-shadow 0.2s;
             border-left: 4px solid transparent;
+            border: 1px solid rgba(51, 144, 236, 0.1);
         }
         .section-card:active {
             transform: scale(0.98);
         }
         .section-card.unlocked {
-            border-left-color: var(--tg-theme-button-color, #3390ec);
+            border-left-color: #3390ec;
         }
         .section-card.completed {
             border-left-color: #4ade80;
@@ -1568,7 +1587,7 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
         }
         .section-meta {
             font-size: 12px;
-            color: var(--tg-theme-hint-color, #708499);
+            color: #708499;
         }
         .section-status {
             font-size: 20px;
@@ -1589,13 +1608,14 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
             border-radius: 4px;
         }
         
+        /* ===== BOTTOM NAV ===== */
         .bottom-nav {
             position: fixed;
-            bottom: 0;
+            bottom: 50px;
             left: 0;
             right: 0;
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-top: 1px solid rgba(255,255,255,0.05);
+            background: #0a0a0a;
+            border-top: 1px solid rgba(51, 144, 236, 0.2);
             padding: 12px 16px;
             display: flex;
             gap: 8px;
@@ -1613,14 +1633,37 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
             justify-content: center;
             gap: 6px;
             text-decoration: none;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .nav-btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
         }
         .nav-btn.primary {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
+            background: #3390ec;
+            color: #fff;
         }
         .nav-btn.secondary {
-            background: rgba(255,255,255,0.08);
-            color: var(--tg-theme-text-color, #fff);
+            background: rgba(51, 144, 236, 0.15);
+            color: #3390ec;
+            border: 1px solid rgba(51, 144, 236, 0.3);
+        }
+        
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.5px;
         }
         
         .loading {
@@ -1630,8 +1673,8 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
         .spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid var(--tg-theme-hint-color, #708499);
-            border-top-color: var(--tg-theme-button-color, #3390ec);
+            border: 3px solid #708499;
+            border-top-color: #3390ec;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 16px;
@@ -1640,31 +1683,44 @@ HTML_LEARNING_HOME = """<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-content">
-            <div class="header-icon">🗺️</div>
-            <h1>Ruta de Aprendizaje</h1>
-            <p class="header-subtitle">Domina las 10 fases del Hacking Ético</p>
+    <!-- HEADER CON LOGO -->
+    <div class="top-header">
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="brand-name">KALIROOT-AI</span>
+    </div>
+    
+    <!-- HERO SECTION -->
+    <div class="hero-section">
+        <div class="hero-icon">🗺️</div>
+        <h1>Ruta de Aprendizaje</h1>
+        <p class="hero-subtitle">Domina las 10 fases del Hacking Ético</p>
+    </div>
+    
+    <div class="main-content">
+        <div class="progress-bar-container">
+            <div class="progress-label">
+                <span>Progreso Total</span>
+                <span id="progress-text">{completed}/{total} Módulos</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width: {progress_percent}%"></div>
+            </div>
+        </div>
+        
+        <div class="section-list" id="sections">
+            {sections_html}
         </div>
     </div>
     
-    <div class="progress-bar-container">
-        <div class="progress-label">
-            <span>Progreso Total</span>
-            <span id="progress-text">{completed}/{total} Módulos</span>
-        </div>
-        <div class="progress-track">
-            <div class="progress-fill" style="width: {progress_percent}%"></div>
-        </div>
-    </div>
-    
-    <div class="section-list" id="sections">
-        {sections_html}
-    </div>
-    
+    <!-- BOTTOM NAV -->
     <div class="bottom-nav">
         <a href="/webapp/dashboard?token={token}" class="nav-btn secondary">← Dashboard</a>
         <button class="nav-btn primary" id="continueBtn">▶️ Continuar</button>
+    </div>
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Todos los derechos reservados.</p>
     </div>
     
     <script>
@@ -1686,25 +1742,54 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>{section_title} - KaliRoot</title>
+    <title>{section_title} - KALIROOT-AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #17212b);
-            color: var(--tg-theme-text-color, #ffffff);
+            background: #000000;
+            color: #ffffff;
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: 150px;
+            display: flex;
+            flex-direction: column;
         }
         
-        .header {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+        /* ===== HEADER CON LOGO ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+        }
+        .logo-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            background: #0d0d0d;
             padding: 20px 16px;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .back-link {
-            color: var(--tg-theme-button-color, #3390ec);
+            color: #3390ec;
             text-decoration: none;
             font-size: 14px;
             display: flex;
@@ -1712,7 +1797,7 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
             gap: 4px;
             margin-bottom: 12px;
         }
-        .header h1 { 
+        .section-header h1 { 
             font-size: 20px; 
             font-weight: 700;
             display: flex;
@@ -1720,16 +1805,20 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
             gap: 8px;
         }
         .header-desc {
-            color: var(--tg-theme-hint-color, #708499);
+            color: #708499;
             font-size: 13px;
             margin-top: 8px;
+        }
+        
+        .main-content {
+            flex: 1;
         }
         
         .module-list {
             padding: 16px;
         }
         .module-card {
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
+            background: #111111;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 10px;
@@ -1739,11 +1828,20 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
             align-items: center;
             gap: 12px;
             transition: transform 0.2s;
+            border: 1px solid rgba(51, 144, 236, 0.1);
         }
         .module-card:active { transform: scale(0.98); }
         .module-card.locked {
             opacity: 0.5;
             pointer-events: none;
+        }
+        
+        .module-thumb {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1px solid rgba(51, 144, 236, 0.2);
         }
         
         .module-number {
@@ -1758,7 +1856,7 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
         }
         .module-number.unlocked {
             background: rgba(51, 144, 236, 0.2);
-            color: var(--tg-theme-button-color, #3390ec);
+            color: #3390ec;
         }
         .module-number.completed {
             background: rgba(74, 222, 128, 0.2);
@@ -1777,17 +1875,18 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
         }
         .module-desc {
             font-size: 12px;
-            color: var(--tg-theme-hint-color, #708499);
+            color: #708499;
         }
         .module-status { font-size: 18px; }
         
+        /* ===== BOTTOM NAV ===== */
         .bottom-nav {
             position: fixed;
-            bottom: 0;
+            bottom: 50px;
             left: 0;
             right: 0;
-            background: var(--tg-theme-secondary-bg-color, #232e3c);
-            border-top: 1px solid rgba(255,255,255,0.05);
+            background: #0a0a0a;
+            border-top: 1px solid rgba(51, 144, 236, 0.2);
             padding: 12px 16px;
         }
         .nav-btn {
@@ -1798,27 +1897,64 @@ HTML_LEARNING_SECTION = """<!DOCTYPE html>
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
+            background: #3390ec;
+            color: #fff;
             text-decoration: none;
             display: block;
             text-align: center;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .nav-btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+        
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
+    <!-- HEADER CON LOGO -->
+    <div class="top-header">
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="brand-name">KALIROOT-AI</span>
+    </div>
+    
+    <!-- SECTION HEADER -->
+    <div class="section-header">
         <a href="/webapp/learning?token={token}" class="back-link">← Volver a Secciones</a>
         <h1>{section_icon} {section_title}</h1>
         <p class="header-desc">{section_progress} módulos completados</p>
     </div>
     
-    <div class="module-list">
-        {modules_html}
+    <div class="main-content">
+        <div class="module-list">
+            {modules_html}
+        </div>
     </div>
     
+    <!-- BOTTOM NAV -->
     <div class="bottom-nav">
         <a href="/webapp/learning?token={token}" class="nav-btn">🗺️ Ver Mapa Completo</a>
+    </div>
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Todos los derechos reservados.</p>
     </div>
     
     <script>
@@ -1833,43 +1969,70 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Módulo {module_id} - KaliRoot</title>
+    <title>Módulo {module_id} - KALIROOT-AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: var(--tg-theme-bg-color, #17212b);
-            --card-bg: var(--tg-theme-secondary-bg-color, #232e3c);
-            --text: var(--tg-theme-text-color, #ffffff);
-            --hint: var(--tg-theme-hint-color, #708499);
-            --button: var(--tg-theme-button-color, #3390ec);
-            --button-text: var(--tg-theme-button-text-color, #ffffff);
+            --bg-color: #000000;
+            --card-bg: #111111;
+            --text: #ffffff;
+            --hint: #708499;
+            --button: #3390ec;
+            --button-text: #ffffff;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-color);
             color: var(--text);
-            padding-bottom: 130px;
+            padding-bottom: 180px;
+            display: flex;
+            flex-direction: column;
         }
         
+        /* ===== HEADER CON LOGO ===== */
+        .top-header {
+            background: #0a0a0a;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(51, 144, 236, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .logo-img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* ===== MODULE HERO IMAGE ===== */
         .header-image {
             width: 100%;
-            height: 240px;
+            height: 220px;
             background-image: url('{module_image}');
             background-size: cover;
             background-position: center;
             position: relative;
-            border-bottom-left-radius: 24px;
-            border-bottom-right-radius: 24px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            margin-bottom: 24px;
         }
         .header-overlay {
             position: absolute; inset: 0;
             background: linear-gradient(to top, var(--bg-color) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.3) 100%);
-            border-bottom-left-radius: 24px;
-            border-bottom-right-radius: 24px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
@@ -1898,23 +2061,28 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
         }
         
         h1 { 
-            font-size: 26px; 
+            font-size: 24px; 
             font-weight: 800; 
             line-height: 1.2;
             text-shadow: 0 2px 10px rgba(0,0,0,0.5);
             margin: 0;
         }
         
+        .main-content {
+            flex: 1;
+        }
+        
         .hero-desc {
             color: var(--hint);
             font-size: 15px;
             line-height: 1.6;
-            padding: 0 24px;
-            margin-bottom: 30px;
+            padding: 20px 24px;
+            background: #0d0d0d;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
         /* AI Content */
-        #ai-content { padding: 0 24px; min-height: 200px; }
+        #ai-content { padding: 20px 24px; min-height: 200px; }
         
         .content-block { margin-bottom: 25px; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         .section-title {
@@ -1940,7 +2108,7 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             border-radius: 12px;
             padding: 18px;
             overflow-x: auto;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(51, 144, 236, 0.1);
             margin: 20px 0;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
@@ -1959,14 +2127,30 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             margin: 24px 0;
         }
         
-        /* Floating Actions */
+        .regen-btn {
+            background: transparent;
+            border: 1px solid var(--hint);
+            color: var(--hint);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 40px auto 20px;
+            display: block;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .regen-btn:active {
+            opacity: 1;
+        }
+
+        /* ===== BOTTOM ACTIONS ===== */
         .bottom-actions {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: var(--bg-color); /* Fallback */
-            background: rgba(23, 33, 43, 0.95);
+            position: fixed; bottom: 50px; left: 0; right: 0;
+            background: #0a0a0a;
             backdrop-filter: blur(16px);
-            padding: 16px 24px 34px 24px; /* Extra padding for iPhone home indicator */
-            border-top: 1px solid rgba(255,255,255,0.08);
+            padding: 16px 24px 20px 24px;
+            border-top: 1px solid rgba(51, 144, 236, 0.2);
             z-index: 100;
             display: flex; flex-direction: column; gap: 12px;
             box-shadow: 0 -4px 30px rgba(0,0,0,0.3);
@@ -1980,11 +2164,11 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             font-size: 16px; font-weight: 700; 
             cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
             position: relative; overflow: hidden;
             text-decoration: none;
         }
-        .action-btn:active { transform: scale(0.96); }
+        .action-btn:active { transform: scale(0.96); opacity: 0.9; }
         
         .action-btn.primary { 
             background: var(--button); 
@@ -1996,28 +2180,34 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
         }
         .action-btn.secondary {
-            background: rgba(255,255,255,0.08);
-            color: var(--text);
+            background: rgba(51, 144, 236, 0.15);
+            color: var(--button);
             font-size: 14px;
             padding: 14px;
+            border: 1px solid rgba(51, 144, 236, 0.3);
         }
         
-        .regen-btn {
-            background: transparent;
-            border: 1px solid var(--hint);
-            color: var(--hint);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin: 40px auto 20px;
-            display: block;
-            cursor: pointer;
-            opacity: 0.7;
+        /* ===== FOOTER ===== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #050505;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            text-align: center;
+            z-index: 101;
+        }
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.5px;
         }
 
         /* Spinner */
         .loading-container { text-align: center; padding: 60px 20px; }
-         .spinner {
+        .spinner {
             width: 40px; height: 40px;
             border: 3px solid rgba(255,255,255,0.1);
             border-top-color: var(--button);
@@ -2030,6 +2220,13 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
     </style>
 </head>
 <body>
+    <!-- HEADER CON LOGO -->
+    <div class="top-header">
+        <img src="/assets/logo.png" alt="Logo" class="logo-img">
+        <span class="brand-name">KALIROOT-AI</span>
+    </div>
+    
+    <!-- MODULE HERO IMAGE -->
     <div class="header-image">
         <div class="header-overlay">
             <div class="module-badge {badge_class}">Módulo {module_id}</div>
@@ -2037,17 +2234,20 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
         </div>
     </div>
     
-    <p class="hero-desc">{module_desc}</p>
+    <div class="main-content">
+        <p class="hero-desc">{module_desc}</p>
 
-    <div id="ai-content">
-        <div class="loading-container">
-            <div class="spinner"></div>
-            <div style="color: var(--hint); font-size: 14px;">Contactando con KaliRoot AI...</div>
+        <div id="ai-content">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <div style="color: var(--hint); font-size: 14px;">Contactando con KALIROOT-AI...</div>
+            </div>
         </div>
+        
+        <button class="regen-btn" onclick="loadContent(true)">🔄 Actualizar Contenido</button>
     </div>
-    
-    <button class="regen-btn" onclick="loadContent(true)">🔄 Actualizar Contenido</button>
 
+    <!-- BOTTOM ACTIONS -->
     <div class="bottom-actions">
         <div id="statusMsg" style="text-align: center; font-size: 13px; margin-bottom: 8px; display: none;"></div>
         
@@ -2058,6 +2258,11 @@ HTML_LEARNING_MODULE = """<!DOCTYPE html>
             {prev_button}
             {next_button}
         </div>
+    </div>
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        <p class="footer-text">© 2026 KALIROOT-AI. Todos los derechos reservados.</p>
     </div>
 
     <script>
