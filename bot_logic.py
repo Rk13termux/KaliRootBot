@@ -140,22 +140,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if is_premium:
             # ===== MENSAJE DE BIENVENIDA PREMIUM =====
-            # Primero removemos el ReplyKeyboard para que el suscriptor trabaje solo con la MiniApp
-            await context.bot.send_message(
+            # Primero removemos el ReplyKeyboard enviando un mensaje temporal
+            cleanup_msg = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="✨",
+                text="⏳ Cargando tu experiencia Premium...",
                 reply_markup=ReplyKeyboardRemove()
             )
+            
             # Eliminar el mensaje de limpieza
             try:
-                await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.effective_chat.id)
-            except:
-                pass
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id, 
+                    message_id=cleanup_msg.message_id
+                )
+            except Exception as e:
+                logger.debug(f"Could not delete cleanup message: {e}")
             
             welcome_msg = (
                 f"👑 <b>¡Bienvenido, {html.escape(first_name or 'Élite')}!</b>\n\n"
                 "━━━━━━━━━━━━━━━━━━━━━━\n"
-                "💎 <b>ESTADO:</b> Suscriptor Premium Activo\n"
+                "💎 <b>ESTADO:</b> Suscriptor Premium Activo ✅\n"
                 "━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 "🚀 <b>TU ACCESO EXCLUSIVO INCLUYE:</b>\n\n"
                 "▪️ 🧠 <b>IA Sin Límites</b> - Consultas ilimitadas sin censura\n"
@@ -165,7 +169,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "▪️ 🏅 <b>Certificados</b> - Valida tu conocimiento\n"
                 "▪️ 📞 <b>Soporte VIP</b> - Respuesta prioritaria\n\n"
                 "━━━━━━━━━━━━━━━━━━━━━━\n"
-                "🎯 <b>Tu experiencia ahora es 100%% en la WebApp</b>\n"
+                "🎯 <b>Tu experiencia es 100% en la WebApp</b>\n"
                 "Toca el botón para acceder a tu Dashboard:\n"
                 "━━━━━━━━━━━━━━━━━━━━━━"
             )
@@ -183,7 +187,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton("📞 Soporte VIP", url="https://t.me/KaliRootHack")]
                 ]
             
-            # Enviar imagen premium con teclado removido
+            # Enviar imagen premium
             try:
                 with open('assets/welcome_premium.jpg', 'rb') as img:
                     await context.bot.send_photo(
@@ -193,8 +197,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
                         parse_mode=ParseMode.HTML
                     )
+            except FileNotFoundError:
+                logger.warning("Premium welcome image not found, sending text only")
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=welcome_msg,
+                    reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
+                    parse_mode=ParseMode.HTML
+                )
             except Exception as e:
-                logger.error(f"Error sending premium welcome image: {e}")
+                logger.error(f"Error sending premium welcome: {e}")
+                # Fallback: enviar mensaje de texto simple
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text=welcome_msg,
