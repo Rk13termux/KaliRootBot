@@ -1,6 +1,9 @@
 import logging
 import requests  # Added for URL validation
 import html
+import hmac
+import hashlib
+import time
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatAction
@@ -8,11 +11,19 @@ from database_manager import get_user_credits, deduct_credit, get_user_profile, 
 from learning_manager import get_user_learning, add_experience, complete_lesson
 from ai_handler import get_ai_response
 from nowpayments_handler import create_payment_invoice
-from config import TELEGRAM_WEBHOOK_URL
+from config import TELEGRAM_WEBHOOK_URL, TELEGRAM_BOT_TOKEN
 import uuid
 
 logger = logging.getLogger(__name__)
 import asyncio
+
+def generate_session_token(user_id: int, is_premium: bool = False) -> str:
+    """Genera un token firmado temporal para el dashboard de la WebApp."""
+    timestamp = int(time.time())
+    status = "1" if is_premium else "0"
+    payload = f"{user_id}:{timestamp}:{status}"
+    signature = hmac.new(TELEGRAM_BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{signature}"
 
 def is_url_valid(url: str) -> bool:
     """Check if a URL is reachable (status < 400). Returns False on exceptions."""
@@ -87,7 +98,6 @@ async def get_premium_dashboard_keyboard(user_id: int):
     base_url = TELEGRAM_WEBHOOK_URL.replace("/webhook/telegram", "") if TELEGRAM_WEBHOOK_URL else ""
     keyboard = []
     if base_url:
-        from token_manager import generate_session_token
         token = generate_session_token(user_id, is_premium=True)
         webapp_url = f"{base_url}/webapp/dashboard?token={token}"
         keyboard = [[InlineKeyboardButton("🚀 Abrir Dashboard", web_app=WebAppInfo(url=webapp_url))]]
@@ -179,7 +189,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             base_url = TELEGRAM_WEBHOOK_URL.replace("/webhook/telegram", "") if TELEGRAM_WEBHOOK_URL else ""
             keyboard = []
             if base_url:
-                from token_manager import generate_session_token
                 token = generate_session_token(user_id, is_premium=True)
                 webapp_url = f"{base_url}/webapp/dashboard?token={token}"
                 keyboard = [
