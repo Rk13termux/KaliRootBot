@@ -1,7 +1,7 @@
 import logging
 import requests  # Added for URL validation
 import html
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatAction
 from database_manager import get_user_credits, deduct_credit, get_user_profile, register_user_if_not_exists, is_user_subscribed, set_subscription_pending, add_xp
@@ -81,6 +81,32 @@ async def send_menu(update: Update, text: str, menu: list):
         parse_mode=ParseMode.HTML
     )
 
+async def get_premium_dashboard_keyboard(user_id: int):
+    """Genera el InlineKeyboard con botón de Dashboard para usuarios premium."""
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    base_url = TELEGRAM_WEBHOOK_URL.replace("/webhook/telegram", "") if TELEGRAM_WEBHOOK_URL else ""
+    keyboard = []
+    if base_url:
+        from token_manager import generate_session_token
+        token = generate_session_token(user_id, is_premium=True)
+        webapp_url = f"{base_url}/webapp/dashboard?token={token}"
+        keyboard = [[InlineKeyboardButton("🚀 Abrir Dashboard", web_app=WebAppInfo(url=webapp_url))]]
+    return InlineKeyboardMarkup(keyboard) if keyboard else None
+
+async def send_premium_redirect(update: Update, user_id: int, custom_message: str = None):
+    """Envía mensaje recordando al usuario premium que use el Dashboard."""
+    keyboard = await get_premium_dashboard_keyboard(user_id)
+    msg = custom_message or (
+        "👑 <b>Función Premium</b>\n\n"
+        "Esta función está disponible en tu Dashboard.\n"
+        "Toca el botón para acceder:"
+    )
+    await update.message.reply_text(
+        msg,
+        reply_markup=keyboard if keyboard else ReplyKeyboardRemove(),
+        parse_mode=ParseMode.HTML
+    )
+
 async def clean_trigger_message(update: Update):
     """
     Disabled: Chat cleaning is turned off.
@@ -114,16 +140,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if is_premium:
             # ===== MENSAJE DE BIENVENIDA PREMIUM =====
+            # Primero removemos el ReplyKeyboard para que el suscriptor trabaje solo con la MiniApp
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="✨",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            # Eliminar el mensaje de limpieza
+            try:
+                await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=update.effective_chat.id)
+            except:
+                pass
+            
             welcome_msg = (
-                f"👑 <b>¡Bienvenido de vuelta, {html.escape(first_name or 'Élite')}!</b>\n\n"
-                "Tu acceso <b>PREMIUM</b> está activo. 💎\n\n"
-                "🚀 <b>TU PANEL EXCLUSIVO:</b>\n"
-                "▪️ 🧠 IA sin límites ni censura\n"
-                "▪️ 🎓 100 Módulos de Academia Hacker\n"
-                "▪️ 🧪 Laboratorios Prácticos Ilimitados\n"
-                "▪️ 📜 Scripts y Recursos VIP\n"
-                "▪️ 🏅 Certificados Oficiales\n\n"
-                "<i>Toca el botón para acceder a tu Dashboard completo:</i>"
+                f"👑 <b>¡Bienvenido, {html.escape(first_name or 'Élite')}!</b>\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                "💎 <b>ESTADO:</b> Suscriptor Premium Activo\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🚀 <b>TU ACCESO EXCLUSIVO INCLUYE:</b>\n\n"
+                "▪️ 🧠 <b>IA Sin Límites</b> - Consultas ilimitadas sin censura\n"
+                "▪️ 🎓 <b>Academia Hacker</b> - 100 Módulos completos\n"
+                "▪️ 🧪 <b>Laboratorios</b> - Prácticas ilimitadas\n"
+                "▪️ 📜 <b>Scripts VIP</b> - Recursos exclusivos\n"
+                "▪️ 🏅 <b>Certificados</b> - Valida tu conocimiento\n"
+                "▪️ 📞 <b>Soporte VIP</b> - Respuesta prioritaria\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                "🎯 <b>Tu experiencia ahora es 100%% en la WebApp</b>\n"
+                "Toca el botón para acceder a tu Dashboard:\n"
+                "━━━━━━━━━━━━━━━━━━━━━━"
             )
             
             # Botón para abrir WebApp
@@ -134,9 +178,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 from token_manager import generate_session_token
                 token = generate_session_token(user_id, is_premium=True)
                 webapp_url = f"{base_url}/webapp/dashboard?token={token}"
-                keyboard = [[InlineKeyboardButton("🚀 ABRIR DASHBOARD PREMIUM", web_app=WebAppInfo(url=webapp_url))]]
+                keyboard = [
+                    [InlineKeyboardButton("🚀 ABRIR DASHBOARD PREMIUM", web_app=WebAppInfo(url=webapp_url))],
+                    [InlineKeyboardButton("📞 Soporte VIP", url="https://t.me/KaliRootHack")]
+                ]
             
-            # Enviar imagen premium
+            # Enviar imagen premium con teclado removido
             try:
                 with open('assets/welcome_premium.jpg', 'rb') as img:
                     await context.bot.send_photo(
@@ -225,8 +272,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- MENU NAVIGATION ---
     if text == "🔙 Volver al Menú Principal":
-        # No cleaning here (Generic back)
-        await send_menu(update, "Regresando al cuartel general...", MAIN_MENU_FREE)
+        # Verificar si el usuario es premium para mostrar el menú correcto
+        is_premium = await is_user_subscribed(user_id)
+        if is_premium:
+            await send_premium_redirect(
+                update,
+                user_id,
+                "👑 <b>Eres usuario Premium</b>\n\n"
+                "Tu experiencia completa está en el Dashboard.\n"
+                "Toca el botón para acceder:"
+            )
+        else:
+            await send_menu(update, "Regresando al cuartel general...", MAIN_MENU_FREE)
         return
     
     # Handler para el botón de desbloquear premium
@@ -261,19 +318,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None, parse_mode=ParseMode.HTML)
         return
     
-    # Handler para Asistente IA (versión Free)
+    # Handler para Asistente IA (diferenciado Free/Premium)
     if text == "🤖 Asistente IA":
-        msg = (
-            "🤖 <b>ASISTENTE IA KALIROOT</b>\n\n"
-            "Escríbeme tu pregunta sobre ciberseguridad.\n\n"
-            "📌 <b>Ejemplos:</b>\n"
-            "• ¿Cómo usar Nmap para escanear puertos?\n"
-            "• ¿Qué es SQL Injection?\n"
-            "• Dame un script para OSINT\n\n"
-            "⚠️ <b>Plan Free:</b> 3 consultas/día\n"
-            "💎 <b>Premium:</b> Consultas ilimitadas\n\n"
-            "👇 <b>Escribe tu pregunta:</b>"
-        )
+        is_premium = await is_user_subscribed(user_id)
+        
+        if is_premium:
+            msg = (
+                "🧠 <b>ASISTENTE IA PREMIUM</b> 👑\n\n"
+                "Tienes acceso <b>ILIMITADO</b> a la IA sin censura.\n\n"
+                "📌 <b>Puedes preguntarme:</b>\n"
+                "• Scripts avanzados de pentesting\n"
+                "• Técnicas de hacking y bypass\n"
+                "• Análisis de malware\n"
+                "• Cualquier tema de ciberseguridad\n\n"
+                "✨ <b>Sin límites. Sin restricciones.</b>\n\n"
+                "👇 <b>Escribe tu pregunta:</b>"
+            )
+        else:
+            msg = (
+                "🤖 <b>ASISTENTE IA KALIROOT</b>\n\n"
+                "Escríbeme tu pregunta sobre ciberseguridad.\n\n"
+                "📌 <b>Ejemplos:</b>\n"
+                "• ¿Cómo usar Nmap para escanear puertos?\n"
+                "• ¿Qué es SQL Injection?\n"
+                "• Dame un script para OSINT\n\n"
+                "⚠️ <b>Plan Free:</b> 3 consultas/día\n"
+                "💎 <b>Premium:</b> Consultas ilimitadas\n\n"
+                "👇 <b>Escribe tu pregunta:</b>"
+            )
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         return
 
@@ -436,7 +508,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 6. Mi Cuenta
     if text == "⚙️ Mi Cuenta":
-        await send_menu(update, "Tus estadísticas y logros. 📊", ACCOUNT_MENU)
+        is_premium = await is_user_subscribed(user_id)
+        if is_premium:
+            # Usuarios premium ven su cuenta en el Dashboard
+            await send_premium_redirect(
+                update, 
+                user_id,
+                "👑 <b>Mi Cuenta Premium</b>\n\n"
+                "Gestiona tu cuenta, estadísticas y suscripción\n"
+                "directamente desde tu Dashboard:\n"
+            )
+        else:
+            await send_menu(update, "Tus estadísticas y logros. 📊", ACCOUNT_MENU)
         return
 
     # 7. Tienda / Recargas (NUEVO SISTEMA)
