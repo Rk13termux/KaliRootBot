@@ -1146,30 +1146,7 @@ HTML_PREMIUM = """<!DOCTYPE html>
         
         <div class="section-title">📥 Recursos Exclusivos</div>
         <div class="resources-grid">
-            <a href="https://drive.google.com/uc?export=download&id=1example1" class="resource-card">
-                <div class="resource-icon">🐉</div>
-                <div class="resource-title">Kali Pack</div>
-                <div class="resource-desc">Configuraciones y scripts</div>
-                <span class="resource-badge">2.3 GB</span>
-            </a>
-            <a href="https://drive.google.com/uc?export=download&id=1example2" class="resource-card">
-                <div class="resource-icon">📱</div>
-                <div class="resource-title">Termux Elite</div>
-                <div class="resource-desc">Setup móvil completo</div>
-                <span class="resource-badge">450 MB</span>
-            </a>
-            <a href="https://drive.google.com/uc?export=download&id=1example3" class="resource-card">
-                <div class="resource-icon">📡</div>
-                <div class="resource-title">WiFi Toolkit</div>
-                <div class="resource-desc">Wordlists y scripts</div>
-                <span class="resource-badge">1.8 GB</span>
-            </a>
-            <a href="https://drive.google.com/uc?export=download&id=1example4" class="resource-card">
-                <div class="resource-icon">💉</div>
-                <div class="resource-title">Web Pentest</div>
-                <div class="resource-desc">Payloads XSS/SQLi</div>
-                <span class="resource-badge">320 MB</span>
-            </a>
+            {resources_html}
         </div>
         
         <div class="section-title">⚡ Acciones Rápidas</div>
@@ -1382,6 +1359,28 @@ async def webapp_dashboard(token: str):
             logger.error(f"Error fetching user data for dashboard: {e}")
             # Continue with default values
         
+        # Load download resources from Supabase
+        resources_html = ""
+        try:
+            from database_manager import supabase as db_supabase
+            resources_result = db_supabase.table("download_resources").select("*").eq("is_active", True).order("created_at", desc=True).execute()
+            
+            if resources_result.data:
+                for resource in resources_result.data:
+                    drive_url = f"https://drive.google.com/uc?export=download&id={resource.get('drive_file_id', '')}"
+                    resources_html += f'''
+            <a href="{drive_url}" class="resource-card">
+                <div class="resource-icon">{resource.get('icon', '📦')}</div>
+                <div class="resource-title">{resource.get('title', 'Recurso')}</div>
+                <div class="resource-desc">{resource.get('description', '')}</div>
+                <span class="resource-badge">{resource.get('file_size', 'N/A')}</span>
+            </a>'''
+            else:
+                resources_html = '<div style="grid-column:1/-1;text-align:center;color:#708499;padding:20px;">No hay recursos disponibles</div>'
+        except Exception as e:
+            logger.error(f"Error loading resources: {e}")
+            resources_html = '<div style="grid-column:1/-1;text-align:center;color:#708499;padding:20px;">Error al cargar recursos</div>'
+        
         # Calculate XP progress for level system
         # Level formula: XP needed for level N = N * 100
         xp_for_current_level = (level - 1) * 100
@@ -1402,6 +1401,7 @@ async def webapp_dashboard(token: str):
             .replace("{next_level}", str(next_level))\
             .replace("{xp_progress}", str(xp_progress))\
             .replace("{xp_to_next}", str(xp_to_next))\
+            .replace("{resources_html}", resources_html)\
             .replace("{token}", token)
         
         return HTMLResponse(content=html, media_type="text/html; charset=utf-8")

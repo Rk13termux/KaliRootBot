@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaliRoot Admin Panel</title>
+    <link rel="stylesheet" href="admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card">
+            <div class="login-logo">🛡️</div>
+            <h1>KaliRoot Admin</h1>
+            <p class="login-subtitle">Panel de Administración</p>
+            
+            <div class="form-group">
+                <label>Supabase URL</label>
+                <input type="text" id="supabase-url" placeholder="https://xxxxx.supabase.co">
+            </div>
+            <div class="form-group">
+                <label>Supabase Service Key</label>
+                <input type="password" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6...">
+            </div>
+            <div class="form-group">
+                <label>Bot Token (opcional)</label>
+                <input type="password" id="bot-token" placeholder="123456789:AAxxxxxxxxxxxx">
+            </div>
+            
+            <button id="login-btn" class="btn-primary btn-full">
+                🔐 Conectar
+            </button>
+            
+            <div id="login-error" class="error-msg hidden"></div>
+            
+            <div class="login-footer">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="remember-creds">
+                    Recordar credenciales
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboard" class="hidden">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="logo-icon">🛡️</span>
+                <span class="logo-text">KaliRoot</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="overview">
+                    <span class="nav-icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item" data-section="users">
+                    <span class="nav-icon">👥</span>
+                    Usuarios
+                </a>
+                <a href="#" class="nav-item" data-section="subscriptions">
+                    <span class="nav-icon">💎</span>
+                    Suscripciones
+                </a>
+                <a href="#" class="nav-item" data-section="resources">
+                    <span class="nav-icon">📦</span>
+                    Recursos
+                </a>
+                <a href="#" class="nav-item" data-section="learning">
+                    <span class="nav-icon">📚</span>
+                    Módulos
+                </a>
+                <a href="#" class="nav-item" data-section="badges">
+                    <span class="nav-icon">🏆</span>
+                    Insignias
+                </a>
+                <a href="#" class="nav-item" data-section="audit">
+                    <span class="nav-icon">📜</span>
+                    Auditoría
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="btn-logout">
+                    🚪 Desconectar
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button id="menu-toggle" class="menu-toggle">☰</button>
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="top-bar-right">
+                    <span id="connection-status" class="status-badge status-connected">
+                        🟢 Conectado
+                    </span>
+                    <button id="refresh-btn" class="btn-icon" title="Refrescar datos">
+                        🔄
+                    </button>
+                </div>
+            </header>
+
+            <!-- CONTENT SECTIONS -->
+            <div class="content-wrapper">
+                
+                <!-- OVERVIEW SECTION -->
+                <section id="section-overview" class="section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-users">0</span>
+                                <span class="stat-label">Usuarios Totales</span>
+                            </div>
+                        </div>
+                        <div class="stat-card premium">
+                            <div class="stat-icon">💎</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-premium">0</span>
+                                <span class="stat-label">Suscriptores</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-credits">0</span>
+                                <span class="stat-label">Créditos Totales</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-resources">0</span>
+                                <span class="stat-label">Recursos</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>📈 Actividad Reciente</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-activity" class="activity-list">
+                                <p class="placeholder">Cargando actividad...</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- USERS SECTION -->
+                <section id="section-users" class="section">
+                    <div class="section-header">
+                        <h2>👥 Gestión de Usuarios</h2>
+                        <div class="header-actions">
+                            <input type="text" id="user-search" class="search-input" placeholder="Buscar por ID, nombre o username...">
+                            <button id="export-users" class="btn-secondary">📥 Exportar CSV</button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table id="users-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Username</th>
+                                    <th>Créditos</th>
+                                    <th>Estado</th>
+                                    <th>Nivel</th>
+                                    <th>Registro</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr><td colspan="8" class="loading">Cargando usuarios...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="pagination" id="users-pagination"></div>
+                </section>
+
+                <!-- SUBSCRIPTIONS SECTION -->
+                <section id="section-subscriptions" class="section">
+                    <div class="section-header">
+                        <h2>💎 Suscripciones Activas</h2>
+                        <div class="header-actions">
+                            <select id="sub-filter" class="select-input">
+                                <option value="all">Todos</option>
+                                <option value="active">Activos</option>
+                                <option value="pending">Pendientes</option>
+                                <option value="expired">Expirados</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table id="subs-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Expira</th>
+                                    <th>Invoice ID</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subs-tbody">
+                                <tr><td colspan="6" class="loading">Cargando suscripciones...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- RESOURCES SECTION -->
+                <section id="section-resources" class="section">
+                    <div class="section-header">
+                        <h2>📦 Recursos de Descarga</h2>
+                        <div class="header-actions">
+                            <button id="add-resource-btn" class="btn-primary">
+                                ➕ Nuevo Recurso
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="resources-grid" id="resources-grid">
+                        <div class="resource-placeholder">Cargando recursos...</div>
+                    </div>
+                </section>
+
+                <!-- LEARNING SECTION -->
+                <section id="section-learning" class="section">
+                    <div class="section-header">
+                        <h2>📚 Módulos de Aprendizaje</h2>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table id="modules-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuario</th>
+                                    <th>Módulo</th>
+                                    <th>Completado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modules-tbody">
+                                <tr><td colspan="4" class="loading">Cargando módulos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- BADGES SECTION -->
+                <section id="section-badges" class="section">
+                    <div class="section-header">
+                        <h2>🏆 Insignias</h2>
+                        <div class="header-actions">
+                            <button id="add-badge-btn" class="btn-primary">
+                                ➕ Nueva Insignia
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="badges-grid" id="badges-grid">
+                        <div class="badge-placeholder">Cargando insignias...</div>
+                    </div>
+                </section>
+
+                <!-- AUDIT SECTION -->
+                <section id="section-audit" class="section">
+                    <div class="section-header">
+                        <h2>📜 Log de Auditoría</h2>
+                        <div class="header-actions">
+                            <select id="audit-type-filter" class="select-input">
+                                <option value="all">Todos los eventos</option>
+                                <option value="user_created">Registro de usuarios</option>
+                                <option value="add_credits">Créditos añadidos</option>
+                                <option value="deduct_credit">Créditos descontados</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table id="audit-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Usuario</th>
+                                    <th>Evento</th>
+                                    <th>Detalles</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-tbody">
+                                <tr><td colspan="4" class="loading">Cargando logs...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Edit User Modal -->
+    <div id="modal-edit-user" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✏️ Editar Usuario</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label>Créditos</label>
+                    <input type="number" id="edit-user-credits" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Estado Suscripción</label>
+                    <select id="edit-user-sub-status">
+                        <option value="inactive">Inactivo</option>
+                        <option value="active">Activo</option>
+                        <option value="pending">Pendiente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha Expiración</label>
+                    <input type="datetime-local" id="edit-user-expiry">
+                </div>
+                <div class="form-group">
+                    <label>Nivel</label>
+                    <input type="number" id="edit-user-level" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label>XP</label>
+                    <input type="number" id="edit-user-xp" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary modal-cancel">Cancelar</button>
+                <button id="save-user-btn" class="btn-primary">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Resource Modal -->
+    <div id="modal-resource" class="modal hidden">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="resource-modal-title">➕ Nuevo Recurso</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="resource-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Título *</label>
+                        <input type="text" id="resource-title" placeholder="Ej: Kali Pack Pro">
+                    </div>
+                    <div class="form-group">
+                        <label>Icono (emoji)</label>
+                        <input type="text" id="resource-icon" placeholder="🐉" maxlength="4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="resource-description" rows="2" placeholder="Breve descripción del recurso"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Google Drive File ID *</label>
+                        <input type="text" id="resource-drive-id" placeholder="1ABC123xyz789...">
+                        <small>Obtenlo del enlace: drive.google.com/file/d/<b>ID</b>/view</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Tamaño del archivo</label>
+                        <input type="text" id="resource-size" placeholder="Ej: 2.3 GB">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>URL de imagen (opcional)</label>
+                        <input type="url" id="resource-image" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="resource-category">
+                            <option value="tools">🛠️ Herramientas</option>
+                            <option value="scripts">📜 Scripts</option>
+                            <option value="wordlists">📝 Wordlists</option>
+                            <option value="mobile">📱 Mobile</option>
+                            <option value="wireless">📡 Wireless</option>
+                            <option value="web">🌐 Web</option>
+                            <option value="malware">🦠 Malware Analysis</option>
+                            <option value="other">📦 Otros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="resource-active" checked>
+                        Activo (visible en la MiniApp)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary modal-cancel">Cancelar</button>
+                <button id="save-resource-btn" class="btn-primary">💾 Guardar Recurso</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="modal-confirm" class="modal hidden">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>⚠️ Confirmar</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">¿Estás seguro de que deseas eliminar este elemento?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary modal-cancel">Cancelar</button>
+                <button id="confirm-action-btn" class="btn-danger">🗑️ Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
