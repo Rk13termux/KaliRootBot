@@ -3429,30 +3429,21 @@ HTML_AI_CHAT = """
             line-height: 1.5;
         }
         
+        /* AI Messages - Clean design without avatar */
         .message-ai {
             display: flex;
-            gap: 12px;
-        }
-        .ai-avatar {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, #3390ec, #00d4ff);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
+            flex-direction: column;
+            max-width: 95%;
         }
         .message-ai .bubble {
-            background: #111111;
-            color: #fff;
-            padding: 16px;
-            border-radius: 4px 18px 18px 18px;
-            max-width: 90%;
+            background: linear-gradient(135deg, #0d1117, #161b22);
+            color: #e6edf3;
+            padding: 16px 18px;
+            border-radius: 18px;
             font-size: 15px;
-            line-height: 1.7;
-            border: 1px solid rgba(255,255,255,0.05);
+            line-height: 1.8;
+            border: 1px solid rgba(51, 144, 236, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         
         /* Code blocks - ENHANCED */
@@ -3527,24 +3518,25 @@ HTML_AI_CHAT = """
         .bubble ul, .bubble ol { margin-left: 20px; margin-bottom: 12px; }
         .bubble li { margin-bottom: 6px; }
         
-        /* Typing indicator */
+        /* Typing indicator - Enhanced */
         .typing-indicator {
             display: flex;
-            gap: 4px;
-            padding: 8px 0;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
         }
         .typing-dot {
             width: 8px;
             height: 8px;
-            background: #3390ec;
+            background: linear-gradient(135deg, #3390ec, #00d4ff);
             border-radius: 50%;
             animation: typingBounce 1.4s infinite;
         }
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }
         .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes typingBounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-8px); }
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-8px); opacity: 1; }
         }
         
         /* ===== INPUT AREA ===== */
@@ -3767,10 +3759,7 @@ HTML_AI_CHAT = """
             } else {
                 // Format code blocks with copy button for AI messages
                 const formattedContent = formatCodeBlocks(content);
-                msgDiv.innerHTML = `
-                    <div class="ai-avatar">🤖</div>
-                    <div class="bubble">${formattedContent}</div>
-                `;
+                msgDiv.innerHTML = `<div class="bubble">${formattedContent}</div>`;
             }
             
             chatContainer.appendChild(msgDiv);
@@ -3783,7 +3772,6 @@ HTML_AI_CHAT = """
             msgDiv.className = 'message message-ai';
             msgDiv.id = 'typingIndicator';
             msgDiv.innerHTML = `
-                <div class="ai-avatar">🤖</div>
                 <div class="bubble">
                     <div class="typing-indicator">
                         <div class="typing-dot"></div>
