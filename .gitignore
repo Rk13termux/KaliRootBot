@@ -10,3 +10,5 @@ nohup.out
 .pytest_cache/
 .env
 
+# Admin Panel config (contains secrets)
+admin-panel/config.js

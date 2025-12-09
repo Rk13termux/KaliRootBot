@@ -126,6 +126,55 @@ admin-panel/
 **"No aparecen los recursos en la MiniApp"**
 → Verifica que el recurso esté marcado como "Activo"
 
+## 📱 Telegram API Server (MTProto)
+
+Para acceder a funciones avanzadas como listar canales y grupos administrados, necesitas ejecutar el servidor API de Python.
+
+### Instalación
+
+```bash
+pip install telethon fastapi uvicorn aiofiles
+```
+
+### Ejecución
+
+```bash
+python3 admin-panel/api_server.py
+```
+
+El servidor se ejecutará en `http://localhost:8081`
+
+### Endpoints Disponibles
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/health` | Estado del servidor |
+| `GET /api/auth/status` | Verificar si estás autenticado |
+| `POST /api/auth/code` | Enviar código de verificación |
+| `POST /api/auth/verify` | Verificar código |
+| `GET /api/me` | Tu información de cuenta |
+| `GET /api/dialogs` | Todos los chats |
+| `GET /api/channels` | Canales administrados |
+| `GET /api/groups` | Grupos |
+| `GET /api/stats` | Estadísticas generales |
+| `GET /api/chat/{id}` | Info de un chat |
+| `GET /api/members/{id}` | Miembros de un chat |
+| `POST /api/send` | Enviar mensaje |
+
+### Primera Autenticación
+
+1. Ve a la sección "Telegram" en el Admin Panel
+2. Ingresa tu número de teléfono con código de país (ej: +51912345678)
+3. Recibirás un código en tu Telegram
+4. Ingresa el código
+5. Si tienes 2FA, ingresa tu contraseña
+
+La sesión se guarda automáticamente para futuras visitas.
+
+### Swagger UI
+
+Accede a `http://localhost:8081/docs` para ver la documentación interactiva de la API.
+
 ---
 
 Desarrollado para **KaliRoot Bot** 🐉

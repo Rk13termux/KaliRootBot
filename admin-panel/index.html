@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KaliRoot Admin Panel</title>
     <link rel="stylesheet" href="admin.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="login-container">
@@ -14,26 +17,60 @@
             <div class="login-logo">🛡️</div>
             <h1>KaliRoot Admin</h1>
             <p class="login-subtitle">Panel de Administración</p>
-            
-            <div class="form-group">
-                <label>Supabase URL</label>
-                <input type="text" id="supabase-url" placeholder="https://xxxxx.supabase.co">
+
+            <div class="form-section">
+                <div class="form-section-title">🗄️ Base de Datos</div>
+                <div class="form-group">
+                    <label>Supabase URL</label>
+                    <input type="text" id="supabase-url" placeholder="https://xxxxx.supabase.co">
+                </div>
+                <div class="form-group">
+                    <label>Supabase Service Key</label>
+                    <input type="password" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6...">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Supabase Service Key</label>
-                <input type="password" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6...">
+
+            <div class="form-section">
+                <div class="form-section-title">🤖 Telegram Bot</div>
+                <div class="form-group">
+                    <label>Bot Token</label>
+                    <input type="password" id="bot-token" placeholder="123456789:AAxxxxxxxxxxxx">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Bot Token (opcional)</label>
-                <input type="password" id="bot-token" placeholder="123456789:AAxxxxxxxxxxxx">
+
+            <div class="form-section collapsible">
+                <div class="form-section-title" onclick="toggleSection(this)">
+                    📱 Telegram API <small>(opcional - clic para expandir)</small>
+                </div>
+                <div class="form-section-content collapsed">
+                    <div class="form-group">
+                        <label>API ID</label>
+                        <input type="text" id="telegram-api-id" placeholder="12345678">
+                        <small>Obtenlo en <a href="https://my.telegram.org" target="_blank">my.telegram.org</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label>API Hash</label>
+                        <input type="password" id="telegram-api-hash" placeholder="0123456789abcdef...">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>App Title</label>
+                            <input type="text" id="telegram-app-title" placeholder="kaliroot">
+                        </div>
+                        <div class="form-group">
+                            <label>Short Name</label>
+                            <input type="text" id="telegram-short-name" placeholder="kaliroot">
+                        </div>
+                    </div>
+                </div>
             </div>
-            
+
             <button id="login-btn" class="btn-primary btn-full">
                 🔐 Conectar
             </button>
-            
+
             <div id="login-error" class="error-msg hidden"></div>
-            
+
             <div class="login-footer">
                 <label class="checkbox-label">
                     <input type="checkbox" id="remember-creds">
@@ -51,7 +88,7 @@
                 <span class="logo-icon">🛡️</span>
                 <span class="logo-text">KaliRoot</span>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item active" data-section="overview">
                     <span class="nav-icon">📊</span>
@@ -81,8 +118,17 @@
                     <span class="nav-icon">📜</span>
                     Auditoría
                 </a>
+                <a href="#" class="nav-item" data-section="telegram">
+                    <span class="nav-icon">📱</span>
+                    Telegram
+                </a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙️</span>
+                    Configuración
+                </a>
             </nav>
-            
+
             <div class="sidebar-footer">
                 <button id="logout-btn" class="btn-logout">
                     🚪 Desconectar
@@ -110,7 +156,7 @@
 
             <!-- CONTENT SECTIONS -->
             <div class="content-wrapper">
-                
+
                 <!-- OVERVIEW SECTION -->
                 <section id="section-overview" class="section active">
                     <div class="stats-grid">
@@ -143,7 +189,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="card">
                         <div class="card-header">
                             <h2>📈 Actividad Reciente</h2>
@@ -161,11 +207,12 @@
                     <div class="section-header">
                         <h2>👥 Gestión de Usuarios</h2>
                         <div class="header-actions">
-                            <input type="text" id="user-search" class="search-input" placeholder="Buscar por ID, nombre o username...">
+                            <input type="text" id="user-search" class="search-input"
+                                placeholder="Buscar por ID, nombre o username...">
                             <button id="export-users" class="btn-secondary">📥 Exportar CSV</button>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <table id="users-table" class="data-table">
                             <thead>
@@ -181,11 +228,13 @@
                                 </tr>
                             </thead>
                             <tbody id="users-tbody">
-                                <tr><td colspan="8" class="loading">Cargando usuarios...</td></tr>
+                                <tr>
+                                    <td colspan="8" class="loading">Cargando usuarios...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div class="pagination" id="users-pagination"></div>
                 </section>
 
@@ -202,7 +251,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <table id="subs-table" class="data-table">
                             <thead>
@@ -216,7 +265,9 @@
                                 </tr>
                             </thead>
                             <tbody id="subs-tbody">
-                                <tr><td colspan="6" class="loading">Cargando suscripciones...</td></tr>
+                                <tr>
+                                    <td colspan="6" class="loading">Cargando suscripciones...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -232,7 +283,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="resources-grid" id="resources-grid">
                         <div class="resource-placeholder">Cargando recursos...</div>
                     </div>
@@ -243,7 +294,7 @@
                     <div class="section-header">
                         <h2>📚 Módulos de Aprendizaje</h2>
                     </div>
-                    
+
                     <div class="table-container">
                         <table id="modules-table" class="data-table">
                             <thead>
@@ -255,7 +306,9 @@
                                 </tr>
                             </thead>
                             <tbody id="modules-tbody">
-                                <tr><td colspan="4" class="loading">Cargando módulos...</td></tr>
+                                <tr>
+                                    <td colspan="4" class="loading">Cargando módulos...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -271,7 +324,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="badges-grid" id="badges-grid">
                         <div class="badge-placeholder">Cargando insignias...</div>
                     </div>
@@ -290,7 +343,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <table id="audit-table" class="data-table">
                             <thead>
@@ -302,9 +355,300 @@
                                 </tr>
                             </thead>
                             <tbody id="audit-tbody">
-                                <tr><td colspan="4" class="loading">Cargando logs...</td></tr>
+                                <tr>
+                                    <td colspan="4" class="loading">Cargando logs...</td>
+                                </tr>
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                <!-- TELEGRAM SECTION -->
+                <section id="section-telegram" class="section">
+                    <div class="section-header">
+                        <h2>📱 Telegram Manager</h2>
+                        <div class="header-actions">
+                            <button id="refresh-telegram-btn" class="btn-secondary" onclick="loadTelegramData()">🔄
+                                Actualizar</button>
+                        </div>
+                    </div>
+
+                    <!-- Bot Info Card -->
+                    <div class="telegram-grid">
+                        <div class="card telegram-card bot-info-card">
+                            <div class="card-header">
+                                <h3>🤖 Información del Bot</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="bot-profile">
+                                    <div class="bot-avatar" id="bot-avatar">🤖</div>
+                                    <div class="bot-details">
+                                        <div class="bot-name" id="bot-name">Cargando...</div>
+                                        <div class="bot-username" id="bot-username">@...</div>
+                                    </div>
+                                </div>
+                                <div class="bot-stats-grid">
+                                    <div class="bot-stat">
+                                        <span class="bot-stat-value" id="bot-id">-</span>
+                                        <span class="bot-stat-label">Bot ID</span>
+                                    </div>
+                                    <div class="bot-stat">
+                                        <span class="bot-stat-value" id="bot-can-join">-</span>
+                                        <span class="bot-stat-label">Puede unirse a grupos</span>
+                                    </div>
+                                    <div class="bot-stat">
+                                        <span class="bot-stat-value" id="bot-can-read">-</span>
+                                        <span class="bot-stat-label">Lee mensajes</span>
+                                    </div>
+                                    <div class="bot-stat">
+                                        <span class="bot-stat-value" id="bot-inline">-</span>
+                                        <span class="bot-stat-label">Modo Inline</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card telegram-card">
+                            <div class="card-header">
+                                <h3>📊 Estadísticas Rápidas</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="quick-stats">
+                                    <div class="quick-stat">
+                                        <span class="quick-stat-icon">👥</span>
+                                        <span class="quick-stat-value" id="tg-total-users">-</span>
+                                        <span class="quick-stat-label">Usuarios Bot</span>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <span class="quick-stat-icon">💬</span>
+                                        <span class="quick-stat-value" id="tg-total-chats">-</span>
+                                        <span class="quick-stat-label">Chats Activos</span>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <span class="quick-stat-icon">📨</span>
+                                        <span class="quick-stat-value" id="tg-messages-today">-</span>
+                                        <span class="quick-stat-label">Mensajes Hoy</span>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <span class="quick-stat-icon">🔔</span>
+                                        <span class="quick-stat-value" id="tg-pending-updates">-</span>
+                                        <span class="quick-stat-label">Updates Pendientes</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MTProto Extended Stats -->
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-header">
+                            <h3>🔮 Estadísticas Avanzadas (Telegram API)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="mtproto-stats" class="quick-stats">
+                                <p class="placeholder" style="grid-column: 1/-1; text-align: center;">
+                                    Inicia el servidor API para ver estadísticas avanzadas<br>
+                                    <code style="font-size: 12px;">python3 admin-panel/api_server.py</code>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Broadcast Section -->
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-header">
+                            <h3>📢 Enviar Mensaje Masivo</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="broadcast-form">
+                                <div class="form-group">
+                                    <label>Mensaje (HTML permitido)</label>
+                                    <textarea id="broadcast-message" rows="4"
+                                        placeholder="<b>Hola!</b> Este es un mensaje importante..."></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Enviar a</label>
+                                        <select id="broadcast-target">
+                                            <option value="all">Todos los usuarios</option>
+                                            <option value="premium">Solo Premium</option>
+                                            <option value="free">Solo Free</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Vista previa</label>
+                                        <button class="btn-secondary" onclick="previewBroadcast()">👁️ Ver
+                                            preview</button>
+                                    </div>
+                                </div>
+                                <div class="broadcast-actions">
+                                    <button class="btn-primary" onclick="sendBroadcast()">📤 Enviar a todos</button>
+                                    <span class="broadcast-warning">⚠️ Esta acción no se puede deshacer</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chats List -->
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-header">
+                            <h3>💬 Chats Administrados</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Buscar Chat/Canal</label>
+                                <div class="search-with-btn">
+                                    <input type="text" id="chat-search"
+                                        placeholder="Ingresa @username o ID del chat...">
+                                    <button class="btn-primary" onclick="searchChat()">🔍 Buscar</button>
+                                </div>
+                            </div>
+                            <div id="chat-search-result" class="chat-result hidden"></div>
+                            <div id="chats-list" class="chats-list">
+                                <p class="placeholder">Busca un chat usando @username o el ID</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Webhook Info -->
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-header">
+                            <h3>🔗 Webhook Status</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="webhook-info" class="webhook-info">
+                                <p class="placeholder">Cargando información del webhook...</p>
+                            </div>
+                            <div class="webhook-actions">
+                                <button class="btn-secondary" onclick="getWebhookInfo()">🔄 Verificar</button>
+                                <button class="btn-secondary" onclick="deleteWebhook()">🗑️ Eliminar Webhook</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS SECTION -->
+                <section id="section-settings" class="section">
+                    <div class="section-header">
+                        <h2>⚙️ Configuración</h2>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h3>🤖 Bot de Telegram</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Bot Token</label>
+                                    <div class="input-with-action">
+                                        <input type="password" id="settings-bot-token" readonly>
+                                        <button class="btn-icon"
+                                            onclick="togglePasswordVisibility('settings-bot-token')">👁️</button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nombre del Bot</label>
+                                    <input type="text" id="settings-bot-name" value="KaliRoot Bot" readonly>
+                                </div>
+                                <div class="settings-info">
+                                    <span class="info-label">Estado:</span>
+                                    <span id="bot-status" class="badge-status badge-active">🟢 Conectado</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h3>📱 Telegram API</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>API ID</label>
+                                        <input type="text" id="settings-api-id" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>API Hash</label>
+                                        <div class="input-with-action">
+                                            <input type="password" id="settings-api-hash" readonly>
+                                            <button class="btn-icon"
+                                                onclick="togglePasswordVisibility('settings-api-hash')">👁️</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>App Title</label>
+                                        <input type="text" id="settings-app-title" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Short Name</label>
+                                        <input type="text" id="settings-short-name" readonly>
+                                    </div>
+                                </div>
+                                <div class="settings-actions">
+                                    <button id="edit-telegram-api-btn" class="btn-secondary">✏️ Editar
+                                        credenciales</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h3>🗄️ Base de Datos</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Supabase URL</label>
+                                    <input type="text" id="settings-supabase-url" readonly>
+                                </div>
+                                <div class="settings-info">
+                                    <span class="info-label">Tablas:</span>
+                                    <span id="db-tables-count">-</span>
+                                </div>
+                                <div class="settings-info">
+                                    <span class="info-label">Estado:</span>
+                                    <span id="db-status" class="badge-status badge-active">🟢 Conectado</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <h3>🎨 Personalización</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Créditos por registro</label>
+                                    <input type="number" id="settings-default-credits" value="20" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Días de suscripción</label>
+                                    <input type="number" id="settings-sub-days" value="30" min="1">
+                                </div>
+                                <div class="settings-actions">
+                                    <button id="save-personalization-btn" class="btn-primary">💾 Guardar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <h3>📋 Variables de Entorno</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="env-vars-display" id="env-vars">
+                                <pre id="env-vars-content">Cargando...</pre>
+                            </div>
+                            <div class="settings-actions" style="margin-top: 16px;">
+                                <button id="copy-env-btn" class="btn-secondary" onclick="copyEnvVars()">📋 Copiar
+                                    .env</button>
+                                <button id="download-env-btn" class="btn-secondary" onclick="downloadEnvFile()">💾
+                                    Descargar .env</button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -440,7 +784,11 @@
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
+    <!-- Config file (optional - for auto-login) -->
+    <script src="config.js" onerror="window.ADMIN_CONFIG = null;"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="admin.js"></script>
 </body>
+
 </html>

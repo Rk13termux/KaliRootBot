@@ -3455,19 +3455,71 @@ HTML_AI_CHAT = """
             border: 1px solid rgba(255,255,255,0.05);
         }
         
-        /* Code blocks */
-        .bubble pre {
-            background: #0a0a0a;
-            padding: 14px;
-            border-radius: 10px;
-            overflow-x: auto;
+        /* Code blocks - ENHANCED */
+        .code-block {
+            position: relative;
             margin: 12px 0;
-            border: 1px solid rgba(51, 144, 236, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0d1117;
+            border: 1px solid rgba(51, 144, 236, 0.2);
+        }
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: rgba(51, 144, 236, 0.1);
+            border-bottom: 1px solid rgba(51, 144, 236, 0.15);
+        }
+        .code-lang {
+            font-size: 11px;
+            color: #3390ec;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .copy-btn {
+            background: transparent;
+            border: 1px solid rgba(51, 144, 236, 0.3);
+            color: #708499;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .copy-btn:hover {
+            background: rgba(51, 144, 236, 0.15);
+            color: #3390ec;
+        }
+        .copy-btn.copied {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+        .bubble pre {
+            background: #0d1117;
+            padding: 14px;
+            margin: 0;
+            overflow-x: auto;
+            max-height: 400px;
         }
         .bubble code {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
             font-size: 13px;
             color: #4ade80;
+            line-height: 1.6;
+        }
+        /* Inline code */
+        .bubble code:not(pre code) {
+            background: rgba(51, 144, 236, 0.1);
+            color: #f0883e;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
         }
         .bubble p { margin-bottom: 12px; }
         .bubble p:last-child { margin-bottom: 0; }
@@ -3713,9 +3765,11 @@ HTML_AI_CHAT = """
             if (isUser) {
                 msgDiv.innerHTML = `<div class="bubble">${escapeHtml(content)}</div>`;
             } else {
+                // Format code blocks with copy button for AI messages
+                const formattedContent = formatCodeBlocks(content);
                 msgDiv.innerHTML = `
                     <div class="ai-avatar">🤖</div>
-                    <div class="bubble">${content}</div>
+                    <div class="bubble">${formattedContent}</div>
                 `;
             }
             
@@ -3751,6 +3805,57 @@ HTML_AI_CHAT = """
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        // Copy code to clipboard
+        function copyCode(btn, codeId) {
+            const codeEl = document.getElementById(codeId);
+            if (!codeEl) return;
+            
+            const code = codeEl.textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.innerHTML = '✓ Copiado';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerHTML = '📋 Copiar';
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Error copying:', err);
+            });
+        }
+        
+        // Format code blocks with copy button
+        function formatCodeBlocks(html) {
+            let codeCounter = 0;
+            
+            // Replace <pre><code>...</code></pre> with enhanced block
+            return html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/gi, (match, code) => {
+                codeCounter++;
+                const codeId = 'code-' + Date.now() + '-' + codeCounter;
+                
+                // Detect language from first line or default to bash
+                let lang = 'bash';
+                const codeText = code.trim();
+                if (codeText.startsWith('#!/usr/bin/python') || codeText.includes('def ') || codeText.includes('import ')) {
+                    lang = 'python';
+                } else if (codeText.includes('<?php')) {
+                    lang = 'php';
+                } else if (codeText.includes('function(') || codeText.includes('const ') || codeText.includes('let ')) {
+                    lang = 'javascript';
+                } else if (codeText.includes('SELECT ') || codeText.includes('INSERT ')) {
+                    lang = 'sql';
+                }
+                
+                return `
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">💻 ${lang}</span>
+                            <button class="copy-btn" onclick="copyCode(this, '${codeId}')">📋 Copiar</button>
+                        </div>
+                        <pre><code id="${codeId}">${code}</code></pre>
+                    </div>`;
+            });
         }
         
         async function sendMessage() {

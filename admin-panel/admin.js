@@ -13,11 +13,78 @@ let resourcesData = [];
 let currentPage = 1;
 const ITEMS_PER_PAGE = 20;
 
+// Telegram API credentials
+let telegramApiId = '';
+let telegramApiHash = '';
+let telegramAppTitle = '';
+let telegramShortName = '';
+
 // ===== INITIALIZATION =====
-document.addEventListener('DOMContentLoaded', () => {
-    loadSavedCredentials();
-    setupEventListeners();
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check if config.js was loaded with valid credentials
+    if (window.ADMIN_CONFIG && window.ADMIN_CONFIG.auto_login &&
+        window.ADMIN_CONFIG.supabase_url && window.ADMIN_CONFIG.supabase_key) {
+
+        console.log('🔐 Config file detected, attempting auto-login...');
+        await autoLoginFromConfig();
+    } else {
+        // No config file or auto_login disabled, show login form
+        loadSavedCredentials();
+        setupEventListeners();
+    }
 });
+
+async function autoLoginFromConfig() {
+    const config = window.ADMIN_CONFIG;
+
+    try {
+        // Initialize Supabase client
+        supabaseClient = supabase.createClient(config.supabase_url, config.supabase_key);
+        botToken = config.bot_token || null;
+
+        // Test connection
+        const { count, error } = await supabaseClient
+            .from('usuarios')
+            .select('*', { count: 'exact', head: true });
+
+        if (error) throw error;
+
+        // Set Telegram API credentials
+        telegramApiId = config.telegram_api_id || '';
+        telegramApiHash = config.telegram_api_hash || '';
+        telegramAppTitle = config.telegram_app_title || '';
+        telegramShortName = config.telegram_short_name || '';
+
+        // Fill form values (for Settings section)
+        document.getElementById('supabase-url').value = config.supabase_url;
+        document.getElementById('supabase-key').value = config.supabase_key;
+        document.getElementById('bot-token').value = config.bot_token || '';
+        document.getElementById('telegram-api-id').value = telegramApiId;
+        document.getElementById('telegram-api-hash').value = telegramApiHash;
+        document.getElementById('telegram-app-title').value = telegramAppTitle;
+        document.getElementById('telegram-short-name').value = telegramShortName;
+
+        // Show dashboard
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+
+        // Setup event listeners before loading data
+        setupEventListeners();
+
+        // Load initial data
+        await loadDashboardData();
+
+        console.log('✅ Auto-login successful!');
+        showToast('Conectado automáticamente desde config.js', 'success');
+
+    } catch (error) {
+        console.error('❌ Auto-login failed:', error);
+        // Fallback to manual login
+        loadSavedCredentials();
+        setupEventListeners();
+        showLoginError('Auto-login falló: ' + error.message);
+    }
+}
 
 function loadSavedCredentials() {
     const savedUrl = localStorage.getItem('supabase_url');
@@ -951,3 +1018,829 @@ window.editResource = editResource;
 window.deleteResource = deleteResource;
 window.testResourceLink = testResourceLink;
 window.changePage = changePage;
+
+// ===== TELEGRAM API CREDENTIALS FUNCTIONS =====
+
+function loadSavedTelegramCredentials() {
+    telegramApiId = localStorage.getItem('telegram_api_id') || '';
+    telegramApiHash = localStorage.getItem('telegram_api_hash') || '';
+    telegramAppTitle = localStorage.getItem('telegram_app_title') || '';
+    telegramShortName = localStorage.getItem('telegram_short_name') || '';
+
+    if (telegramApiId) document.getElementById('telegram-api-id').value = telegramApiId;
+    if (telegramApiHash) document.getElementById('telegram-api-hash').value = telegramApiHash;
+    if (telegramAppTitle) document.getElementById('telegram-app-title').value = telegramAppTitle;
+    if (telegramShortName) document.getElementById('telegram-short-name').value = telegramShortName;
+}
+
+function saveTelegramCredentials() {
+    telegramApiId = document.getElementById('telegram-api-id').value.trim();
+    telegramApiHash = document.getElementById('telegram-api-hash').value.trim();
+    telegramAppTitle = document.getElementById('telegram-app-title').value.trim();
+    telegramShortName = document.getElementById('telegram-short-name').value.trim();
+
+    if (document.getElementById('remember-creds').checked) {
+        localStorage.setItem('telegram_api_id', telegramApiId);
+        localStorage.setItem('telegram_api_hash', telegramApiHash);
+        localStorage.setItem('telegram_app_title', telegramAppTitle);
+        localStorage.setItem('telegram_short_name', telegramShortName);
+    }
+}
+
+// Update loadSavedCredentials to also load Telegram API credentials
+const originalLoadSavedCredentials = loadSavedCredentials;
+function loadSavedCredentialsExtended() {
+    originalLoadSavedCredentials();
+    loadSavedTelegramCredentials();
+}
+
+// Replace the original function call
+document.addEventListener('DOMContentLoaded', () => {
+    loadSavedCredentialsExtended();
+});
+
+// Modify handleLogin to also save Telegram credentials
+const originalHandleLogin = handleLogin;
+async function handleLoginExtended() {
+    saveTelegramCredentials();
+    await originalHandleLogin();
+    loadSettingsSection();
+}
+
+// Override the login button handler
+document.getElementById('login-btn').removeEventListener('click', handleLogin);
+document.getElementById('login-btn').addEventListener('click', handleLoginExtended);
+
+// ===== TOGGLE SECTION (COLLAPSIBLE) =====
+function toggleSection(element) {
+    const content = element.nextElementSibling;
+    if (content) {
+        content.classList.toggle('collapsed');
+    }
+}
+window.toggleSection = toggleSection;
+
+// ===== TOGGLE PASSWORD VISIBILITY =====
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+    }
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
+
+// ===== SETTINGS SECTION =====
+function loadSettingsSection() {
+    // Fill in settings fields
+    const supabaseUrl = document.getElementById('supabase-url').value;
+
+    if (document.getElementById('settings-supabase-url')) {
+        document.getElementById('settings-supabase-url').value = supabaseUrl;
+    }
+    if (document.getElementById('settings-bot-token')) {
+        document.getElementById('settings-bot-token').value = botToken || '';
+    }
+    if (document.getElementById('settings-api-id')) {
+        document.getElementById('settings-api-id').value = telegramApiId;
+    }
+    if (document.getElementById('settings-api-hash')) {
+        document.getElementById('settings-api-hash').value = telegramApiHash;
+    }
+    if (document.getElementById('settings-app-title')) {
+        document.getElementById('settings-app-title').value = telegramAppTitle;
+    }
+    if (document.getElementById('settings-short-name')) {
+        document.getElementById('settings-short-name').value = telegramShortName;
+    }
+
+    // Generate env vars preview
+    generateEnvVarsPreview();
+}
+
+function generateEnvVarsPreview() {
+    const supabaseUrl = document.getElementById('supabase-url').value;
+    const supabaseKey = document.getElementById('supabase-key').value;
+
+    const envVars = `# ====== KALIROOT BOT ENVIRONMENT VARIABLES ======
+# Generated from Admin Panel on ${new Date().toISOString().split('T')[0]}
+
+# ===== SUPABASE =====
+SUPABASE_URL=${supabaseUrl}
+SUPABASE_ANON_KEY=${supabaseKey}
+SUPABASE_SERVICE_KEY=${supabaseKey}
+
+# ===== TELEGRAM BOT =====
+TELEGRAM_BOT_TOKEN=${botToken || 'YOUR_BOT_TOKEN'}
+
+# ===== TELEGRAM API (for advanced features) =====
+TELEGRAM_API_ID=${telegramApiId || 'YOUR_API_ID'}
+TELEGRAM_API_HASH=${telegramApiHash || 'YOUR_API_HASH'}
+TELEGRAM_APP_TITLE=${telegramAppTitle || 'kaliroot'}
+TELEGRAM_SHORT_NAME=${telegramShortName || 'kaliroot'}
+
+# ===== OTHER CONFIGS =====
+LOG_LEVEL=INFO
+DEFAULT_CREDITS_ON_REGISTER=20
+`;
+
+    const envContent = document.getElementById('env-vars-content');
+    if (envContent) {
+        envContent.textContent = envVars;
+    }
+
+    return envVars;
+}
+
+function copyEnvVars() {
+    const envVars = generateEnvVarsPreview();
+    navigator.clipboard.writeText(envVars).then(() => {
+        showToast('Variables de entorno copiadas al portapapeles', 'success');
+    }).catch(err => {
+        showToast('Error al copiar: ' + err, 'error');
+    });
+}
+window.copyEnvVars = copyEnvVars;
+
+function downloadEnvFile() {
+    const envVars = generateEnvVarsPreview();
+    const blob = new Blob([envVars], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '.env';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Archivo .env descargado', 'success');
+}
+window.downloadEnvFile = downloadEnvFile;
+
+// Add settings to navigation titles
+const originalNavigateToSection = navigateToSection;
+function navigateToSectionExtended(section) {
+    currentSection = section;
+
+    // Update nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.section === section);
+    });
+
+    // Update sections
+    document.querySelectorAll('.section').forEach(sec => {
+        sec.classList.toggle('active', sec.id === `section-${section}`);
+    });
+
+    // Update title
+    const titles = {
+        overview: 'Dashboard',
+        users: 'Gestión de Usuarios',
+        subscriptions: 'Suscripciones',
+        resources: 'Recursos de Descarga',
+        learning: 'Módulos de Aprendizaje',
+        badges: 'Insignias',
+        audit: 'Log de Auditoría',
+        telegram: 'Telegram Manager',
+        settings: 'Configuración'
+    };
+    document.getElementById('page-title').textContent = titles[section] || 'Dashboard';
+
+    // Close mobile menu
+    document.querySelector('.sidebar').classList.remove('open');
+
+    // Load section data
+    if (section === 'settings') {
+        loadSettingsSection();
+    } else if (section === 'telegram') {
+        loadTelegramData();
+    } else {
+        refreshCurrentSection();
+    }
+}
+
+// Override navigate function
+window.navigateToSection = navigateToSectionExtended;
+
+// Re-attach event listeners with the new function
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const section = item.dataset.section;
+        navigateToSectionExtended(section);
+    });
+});
+
+// ===== TELEGRAM FUNCTIONS =====
+
+async function loadTelegramData() {
+    if (!botToken) {
+        showToast('Bot Token no configurado', 'error');
+        return;
+    }
+
+    await Promise.all([
+        getBotInfo(),
+        getWebhookInfo(),
+        loadTelegramStats()
+    ]);
+}
+window.loadTelegramData = loadTelegramData;
+
+async function getBotInfo() {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+        const data = await response.json();
+
+        if (data.ok) {
+            const bot = data.result;
+            document.getElementById('bot-name').textContent = bot.first_name;
+            document.getElementById('bot-username').textContent = '@' + bot.username;
+            document.getElementById('bot-id').textContent = bot.id;
+            document.getElementById('bot-can-join').textContent = bot.can_join_groups ? '✅ Sí' : '❌ No';
+            document.getElementById('bot-can-read').textContent = bot.can_read_all_group_messages ? '✅ Sí' : '❌ No';
+            document.getElementById('bot-inline').textContent = bot.supports_inline_queries ? '✅ Sí' : '❌ No';
+        } else {
+            showToast('Error al obtener info del bot: ' + data.description, 'error');
+        }
+    } catch (error) {
+        console.error('Error getting bot info:', error);
+        showToast('Error de conexión con Telegram API', 'error');
+    }
+}
+
+async function getWebhookInfo() {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+        const data = await response.json();
+
+        if (data.ok) {
+            const webhook = data.result;
+            const container = document.getElementById('webhook-info');
+
+            const hasWebhook = webhook.url && webhook.url.length > 0;
+
+            container.innerHTML = `
+                <div style="margin-bottom: 12px;">
+                    <span class="webhook-status ${hasWebhook ? 'active' : 'inactive'}">
+                        ${hasWebhook ? '🟢 Activo' : '🔴 Inactivo'}
+                    </span>
+                </div>
+                <div class="label">URL del Webhook:</div>
+                <div class="value"><code>${webhook.url || 'No configurado'}</code></div>
+                ${webhook.last_error_message ? `
+                    <div class="label" style="margin-top: 12px; color: var(--accent-red);">Último error:</div>
+                    <div class="value" style="color: var(--accent-red);">${webhook.last_error_message}</div>
+                ` : ''}
+                <div class="label" style="margin-top: 12px;">Updates pendientes:</div>
+                <div class="value">${webhook.pending_update_count || 0}</div>
+            `;
+
+            // Update pending updates stat
+            document.getElementById('tg-pending-updates').textContent = webhook.pending_update_count || 0;
+        }
+    } catch (error) {
+        console.error('Error getting webhook info:', error);
+    }
+}
+window.getWebhookInfo = getWebhookInfo;
+
+async function deleteWebhook() {
+    if (!confirm('¿Eliminar el webhook? El bot dejará de recibir actualizaciones hasta que se configure de nuevo.')) return;
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`);
+        const data = await response.json();
+
+        if (data.ok) {
+            showToast('Webhook eliminado correctamente', 'success');
+            await getWebhookInfo();
+        } else {
+            showToast('Error: ' + data.description, 'error');
+        }
+    } catch (error) {
+        showToast('Error de conexión', 'error');
+    }
+}
+window.deleteWebhook = deleteWebhook;
+
+async function loadTelegramStats() {
+    try {
+        // Get users count from our database
+        const { count: usersCount } = await supabaseClient
+            .from('usuarios')
+            .select('*', { count: 'exact', head: true });
+
+        document.getElementById('tg-total-users').textContent = usersCount || 0;
+
+        // Get active chats (users with recent activity)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const { count: activeChats } = await supabaseClient
+            .from('usuarios')
+            .select('*', { count: 'exact', head: true })
+            .gte('updated_at', thirtyDaysAgo.toISOString());
+
+        document.getElementById('tg-total-chats').textContent = activeChats || 0;
+
+        // Messages today from audit log
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { count: messagesToday } = await supabaseClient
+            .from('audit_log')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', today.toISOString());
+
+        document.getElementById('tg-messages-today').textContent = messagesToday || 0;
+
+    } catch (error) {
+        console.error('Error loading telegram stats:', error);
+    }
+}
+
+async function searchChat() {
+    const query = document.getElementById('chat-search').value.trim();
+    if (!query) {
+        showToast('Ingresa un @username o ID de chat', 'error');
+        return;
+    }
+
+    try {
+        // Try to get chat info
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/getChat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: query })
+        });
+
+        const data = await response.json();
+
+        const resultContainer = document.getElementById('chat-search-result');
+
+        if (data.ok) {
+            const chat = data.result;
+            const type = chat.type === 'private' ? '👤 Privado' :
+                chat.type === 'group' ? '👥 Grupo' :
+                    chat.type === 'supergroup' ? '👥 Supergrupo' :
+                        chat.type === 'channel' ? '📢 Canal' : chat.type;
+
+            resultContainer.classList.remove('hidden');
+            resultContainer.innerHTML = `
+                <div class="chat-info">
+                    <div class="chat-avatar">${chat.type === 'channel' ? '📢' : chat.type === 'private' ? '👤' : '👥'}</div>
+                    <div class="chat-details">
+                        <h4>${escapeHtml(chat.title || chat.first_name || 'Sin nombre')}</h4>
+                        <p>${chat.username ? '@' + chat.username : 'Sin username'}</p>
+                    </div>
+                </div>
+                <div class="chat-meta">
+                    <span>Tipo: <strong>${type}</strong></span>
+                    <span>ID: <strong>${chat.id}</strong></span>
+                    ${chat.members_count ? `<span>Miembros: <strong>${chat.members_count}</strong></span>` : ''}
+                </div>
+                <div style="margin-top: 12px;">
+                    <button class="btn-secondary btn-sm" onclick="sendMessageToChat('${chat.id}')">💬 Enviar mensaje</button>
+                    ${chat.type !== 'private' ? `<button class="btn-secondary btn-sm" onclick="getChatMemberCount('${chat.id}')">👥 Ver miembros</button>` : ''}
+                </div>
+            `;
+        } else {
+            resultContainer.classList.remove('hidden');
+            resultContainer.innerHTML = `
+                <div style="color: var(--accent-red);">
+                    ❌ ${data.description || 'Chat no encontrado'}
+                </div>
+                <p style="color: var(--text-muted); margin-top: 8px; font-size: 12px;">
+                    Asegúrate de que el bot esté en el chat o usa el ID numérico.
+                </p>
+            `;
+        }
+    } catch (error) {
+        console.error('Error searching chat:', error);
+        showToast('Error de conexión', 'error');
+    }
+}
+window.searchChat = searchChat;
+
+async function sendMessageToChat(chatId) {
+    const message = prompt('Mensaje a enviar:');
+    if (!message) return;
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+            showToast('Mensaje enviado correctamente', 'success');
+        } else {
+            showToast('Error: ' + data.description, 'error');
+        }
+    } catch (error) {
+        showToast('Error de conexión', 'error');
+    }
+}
+window.sendMessageToChat = sendMessageToChat;
+
+async function getChatMemberCount(chatId) {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/getChatMemberCount`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+            showToast(`El chat tiene ${data.result} miembros`, 'info');
+        } else {
+            showToast('Error: ' + data.description, 'error');
+        }
+    } catch (error) {
+        showToast('Error de conexión', 'error');
+    }
+}
+window.getChatMemberCount = getChatMemberCount;
+
+function previewBroadcast() {
+    const message = document.getElementById('broadcast-message').value;
+    if (!message) {
+        showToast('Escribe un mensaje primero', 'error');
+        return;
+    }
+
+    // Show preview in a modal or alert
+    const preview = document.createElement('div');
+    preview.innerHTML = message;
+    alert('Vista previa del mensaje:\n\n' + preview.textContent);
+}
+window.previewBroadcast = previewBroadcast;
+
+async function sendBroadcast() {
+    const message = document.getElementById('broadcast-message').value.trim();
+    const target = document.getElementById('broadcast-target').value;
+
+    if (!message) {
+        showToast('Escribe un mensaje primero', 'error');
+        return;
+    }
+
+    const confirmMsg = `¿Enviar mensaje a ${target === 'all' ? 'TODOS los usuarios' : target === 'premium' ? 'usuarios PREMIUM' : 'usuarios FREE'}?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        // Get users based on target
+        let query = supabaseClient.from('usuarios').select('user_id');
+
+        if (target === 'premium') {
+            query = query.eq('subscription_status', 'active');
+        } else if (target === 'free') {
+            query = query.or('subscription_status.is.null,subscription_status.neq.active');
+        }
+
+        const { data: users, error } = await query;
+
+        if (error) throw error;
+
+        if (!users || users.length === 0) {
+            showToast('No hay usuarios para enviar', 'error');
+            return;
+        }
+
+        showToast(`Enviando a ${users.length} usuarios...`, 'info');
+
+        let sent = 0;
+        let failed = 0;
+
+        for (const user of users) {
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: user.user_id,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.ok) {
+                    sent++;
+                } else {
+                    failed++;
+                }
+
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+            } catch (e) {
+                failed++;
+            }
+        }
+
+        showToast(`Broadcast completado: ${sent} enviados, ${failed} fallidos`, sent > 0 ? 'success' : 'error');
+
+    } catch (error) {
+        console.error('Error sending broadcast:', error);
+        showToast('Error al enviar broadcast', 'error');
+    }
+}
+window.sendBroadcast = sendBroadcast;
+
+// ===== MTPROTO API (Backend Python) =====
+const MTPROTO_API_URL = 'http://localhost:8081/api';
+
+// Check if MTProto API is available
+async function checkMTProtoAPI() {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/health`, { timeout: 2000 });
+        return response.ok;
+    } catch {
+        return false;
+    }
+}
+
+// Check MTProto auth status
+async function checkMTProtoAuth() {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/auth/status`);
+        const data = await response.json();
+        return data;
+    } catch {
+        return { authorized: false, error: 'API no disponible' };
+    }
+}
+
+// Send phone code for MTProto auth
+async function sendMTProtoCode(phone) {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/auth/code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+        return await response.json();
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+window.sendMTProtoCode = sendMTProtoCode;
+
+// Verify MTProto code
+async function verifyMTProtoCode(phone, code, password = null) {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, code, password })
+        });
+        return await response.json();
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+window.verifyMTProtoCode = verifyMTProtoCode;
+
+// Get MTProto Stats
+async function getMTProtoStats() {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/stats`);
+        if (!response.ok) throw new Error('Not authorized');
+        return await response.json();
+    } catch {
+        return null;
+    }
+}
+
+// Get MTProto Channels
+async function getMTProtoChannels() {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/channels`);
+        if (!response.ok) throw new Error('Not authorized');
+        return await response.json();
+    } catch {
+        return { channels: [], count: 0 };
+    }
+}
+
+// Get MTProto Groups
+async function getMTProtoGroups() {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/groups`);
+        if (!response.ok) throw new Error('Not authorized');
+        return await response.json();
+    } catch {
+        return { groups: [], count: 0 };
+    }
+}
+
+// Get MTProto Dialogs
+async function getMTProtoDialogs() {
+    try {
+        const response = await fetch(`${MTPROTO_API_URL}/dialogs?limit=100`);
+        if (!response.ok) throw new Error('Not authorized');
+        return await response.json();
+    } catch {
+        return { dialogs: [], count: 0 };
+    }
+}
+
+// Update Telegram section with MTProto data
+async function updateTelegramWithMTProto() {
+    const apiAvailable = await checkMTProtoAPI();
+
+    if (!apiAvailable) {
+        console.log('MTProto API no disponible, usando solo Bot API');
+        return false;
+    }
+
+    const authStatus = await checkMTProtoAuth();
+
+    if (!authStatus.authorized) {
+        // Show auth required message
+        showMTProtoAuthUI();
+        return false;
+    }
+
+    // Load MTProto data
+    const [stats, channels, groups] = await Promise.all([
+        getMTProtoStats(),
+        getMTProtoChannels(),
+        getMTProtoGroups()
+    ]);
+
+    if (stats) {
+        // Update stats in UI
+        document.getElementById('tg-total-chats').textContent = stats.total_dialogs || 0;
+
+        // Add MTProto-specific stats if elements exist
+        const mtprotoStatsContainer = document.getElementById('mtproto-stats');
+        if (mtprotoStatsContainer) {
+            mtprotoStatsContainer.innerHTML = `
+                <div class="quick-stat">
+                    <span class="quick-stat-icon">📢</span>
+                    <span class="quick-stat-value">${stats.channels || 0}</span>
+                    <span class="quick-stat-label">Canales</span>
+                </div>
+                <div class="quick-stat">
+                    <span class="quick-stat-icon">👥</span>
+                    <span class="quick-stat-value">${stats.supergroups || 0}</span>
+                    <span class="quick-stat-label">Supergrupos</span>
+                </div>
+                <div class="quick-stat">
+                    <span class="quick-stat-icon">🤖</span>
+                    <span class="quick-stat-value">${stats.bots || 0}</span>
+                    <span class="quick-stat-label">Bots</span>
+                </div>
+                <div class="quick-stat">
+                    <span class="quick-stat-icon">👑</span>
+                    <span class="quick-stat-value">${stats.admin_channels || 0}</span>
+                    <span class="quick-stat-label">Admin en Canales</span>
+                </div>
+            `;
+        }
+    }
+
+    // Update channels list
+    if (channels.count > 0) {
+        const channelsList = document.getElementById('chats-list');
+        if (channelsList) {
+            channelsList.innerHTML = `
+                <h4 style="margin-bottom: 12px;">📢 Canales Administrados (${channels.count})</h4>
+                ${channels.channels.map(ch => `
+                    <div class="chat-item">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 24px;">📢</span>
+                            <div>
+                                <strong>${escapeHtml(ch.name)}</strong>
+                                ${ch.username ? `<br><small>@${ch.username}</small>` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="color: var(--accent-blue);">${ch.participants_count || '?'} miembros</span>
+                            ${ch.is_creator ? '<br><small style="color: var(--accent-green);">👑 Creador</small>' : ''}
+                            ${ch.is_admin && !ch.is_creator ? '<br><small style="color: var(--accent-yellow);">⭐ Admin</small>' : ''}
+                        </div>
+                    </div>
+                `).join('')}
+                
+                ${groups.count > 0 ? `
+                    <h4 style="margin: 20px 0 12px;">👥 Grupos (${groups.count})</h4>
+                    ${groups.groups.slice(0, 10).map(g => `
+                        <div class="chat-item">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 24px;">👥</span>
+                                <div>
+                                    <strong>${escapeHtml(g.name)}</strong>
+                                    ${g.username ? `<br><small>@${g.username}</small>` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="color: var(--accent-blue);">${g.participants_count || '?'} miembros</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                ` : ''}
+            `;
+        }
+    }
+
+    return true;
+}
+
+function showMTProtoAuthUI() {
+    const container = document.getElementById('chats-list');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="card" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(59, 130, 246, 0.1)); padding: 20px;">
+            <h4 style="margin-bottom: 12px;">🔐 Autenticación Telegram API</h4>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Para acceder a canales y grupos administrados, necesitas autenticarte con tu cuenta de Telegram.
+            </p>
+            <div class="form-group">
+                <label>Número de teléfono (con código de país)</label>
+                <input type="text" id="mtproto-phone" placeholder="+51912345678" style="max-width: 300px;">
+            </div>
+            <button class="btn-primary" onclick="startMTProtoAuth()">📲 Enviar código</button>
+            
+            <div id="mtproto-code-form" class="hidden" style="margin-top: 16px;">
+                <div class="form-group">
+                    <label>Código de verificación</label>
+                    <input type="text" id="mtproto-code" placeholder="12345" style="max-width: 200px;">
+                </div>
+                <div class="form-group hidden" id="mtproto-2fa-group">
+                    <label>Contraseña 2FA (si está habilitada)</label>
+                    <input type="password" id="mtproto-password" placeholder="Tu contraseña" style="max-width: 300px;">
+                </div>
+                <button class="btn-primary" onclick="completeMTProtoAuth()">✅ Verificar</button>
+            </div>
+        </div>
+    `;
+}
+
+async function startMTProtoAuth() {
+    const phone = document.getElementById('mtproto-phone').value.trim();
+    if (!phone) {
+        showToast('Ingresa tu número de teléfono', 'error');
+        return;
+    }
+
+    showToast('Enviando código...', 'info');
+    const result = await sendMTProtoCode(phone);
+
+    if (result.success) {
+        showToast('Código enviado a tu Telegram', 'success');
+        document.getElementById('mtproto-code-form').classList.remove('hidden');
+    } else {
+        showToast('Error: ' + (result.detail || result.error), 'error');
+    }
+}
+window.startMTProtoAuth = startMTProtoAuth;
+
+async function completeMTProtoAuth() {
+    const phone = document.getElementById('mtproto-phone').value.trim();
+    const code = document.getElementById('mtproto-code').value.trim();
+    const password = document.getElementById('mtproto-password').value.trim();
+
+    if (!code) {
+        showToast('Ingresa el código', 'error');
+        return;
+    }
+
+    showToast('Verificando...', 'info');
+    const result = await verifyMTProtoCode(phone, code, password || null);
+
+    if (result.success) {
+        showToast('¡Autenticado correctamente!', 'success');
+        // Reload telegram data
+        loadTelegramData();
+    } else if (result.detail && result.detail.includes('2FA')) {
+        document.getElementById('mtproto-2fa-group').classList.remove('hidden');
+        showToast('Se requiere contraseña 2FA', 'info');
+    } else {
+        showToast('Error: ' + (result.detail || result.error), 'error');
+    }
+}
+window.completeMTProtoAuth = completeMTProtoAuth;
+
+// Enhanced loadTelegramData to include MTProto
+const originalLoadTelegramData = loadTelegramData;
+async function loadTelegramDataEnhanced() {
+    // First load bot API data
+    await originalLoadTelegramData();
+
+    // Then try to load MTProto data
+    await updateTelegramWithMTProto();
+}
+
+// Override the function
+window.loadTelegramData = loadTelegramDataEnhanced;
